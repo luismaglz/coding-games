@@ -1,4 +1,63 @@
 /// <reference path="./definitions.d.ts" />
+function calculateMoves(p) {
+    const directions = [
+        Direction.UP,
+        Direction.DOWN,
+        Direction.LEFT,
+        Direction.RIGHT
+    ];
+    const index = directions.findIndex(d => d === p.defaultDirection);
+    directions.splice(index, 1);
+    const state = {
+        stop: false,
+        paths: [[]],
+        limit: 5,
+        goal: p.goalSquares.map(g => g.id),
+        dDirection: p.defaultDirection,
+        otherDirections: directions
+    };
+    findOptimalPath(p.square, state, 0);
+    try {
+        const nextId = state.paths
+            .filter(p => state.goal.indexOf(p[p.length - 1]) > -1)
+            .sort((a, b) => a.length - b.length)[0][0];
+        state.paths.forEach(p => Actions.debug(p.toString()));
+        return grid.getSquareById(nextId);
+    }
+    catch (err) {
+        Actions.debug(state);
+    }
+}
+function findOptimalPath(starting, state, pathIndex) {
+    const preferred = grid.getNextMovableSquare(starting, state.dDirection);
+    const otherDirections = state.otherDirections.reduce((acc, o) => {
+        const next = grid.getNextMovableSquare(starting, o);
+        if (next) {
+            acc.push(next);
+        }
+        return acc;
+    }, []);
+    if (preferred) {
+        state.paths[pathIndex].push(preferred.id);
+        if (state.goal.indexOf(preferred.id) > -1) {
+            return;
+        }
+        findOptimalPath(preferred, state, pathIndex);
+    }
+    if (state.limit >= state.paths.length) {
+        otherDirections.forEach(o => {
+            if (state.paths[pathIndex].indexOf(o.id) > -1 ||
+                state.goal.indexOf(o.id) > -1) {
+                return;
+            }
+            const newPath = state.paths[pathIndex].slice(0);
+            const newIndex = state.paths.length;
+            state.paths.push(newPath);
+            newPath.push(o.id);
+            findOptimalPath(o, state, newIndex);
+        });
+    }
+}
 var Direction;
 (function (Direction) {
     Direction["LEFT"] = "LEFT";
@@ -64,25 +123,57 @@ class Grid {
     getSquare(x, y) {
         return this.squares.find(s => s.id === `${x}${y}`);
     }
+    getSquareById(id) {
+        return this.squares.find(s => s.id === id);
+    }
     getNextSquare(square, d) {
-        if (d === Direction.RIGHT) {
-            return this.getSquare(square.x + 1, square.y);
+        let x = square.x;
+        let y = square.y;
+        if (d === Direction.RIGHT)
+            x++;
+        if (d === Direction.LEFT)
+            x--;
+        if (d === Direction.UP)
+            y--;
+        if (d === Direction.DOWN)
+            y++;
+        return this.getSquare(x, y);
+    }
+    getDirection(square, next) {
+        if (square.x + 1 === next.x) {
+            return Direction.RIGHT;
         }
-        if (d === Direction.LEFT) {
-            return this.getSquare(square.x - 1, square.y);
+        if (square.x - 1 === next.x) {
+            return Direction.LEFT;
         }
-        if (d === Direction.UP) {
-            return this.getSquare(square.x, square.y - 1);
+        if (square.y - 1 === next.x) {
+            return Direction.DOWN;
         }
-        if (d === Direction.DOWN) {
-            return this.getSquare(square.x, square.y + 1);
+        if (square.y + 1 === next.x) {
+            return Direction.UP;
         }
+    }
+    getNextMovableSquare(square, d) {
+        if (!this.canMove(square, d)) {
+            return null;
+        }
+        return this.getNextSquare(square, d);
+    }
+    canMove(square, d) {
+        return square.availableMoves.findIndex(a => a === d) > -1;
     }
 }
 class Player {
-    constructor(id, square) {
+    constructor(id, square, grid) {
         this.previousSquares = [];
+        this.goalSquares = [];
         this.wallsLeft = 0;
+        this.goals = [
+            ["80", "81", "82", "83", "84", "85", "86", "87", "88"],
+            ["00", "01", "02", "03", "04", "05", "06", "07", "08"],
+            ["08", "18", "28", "38", "48", "58", "68", "78", "88"],
+            ["00", "10", "20", "30", "40", "50", "60", "70", "88"]
+        ];
         this.square = square;
         this.id = id;
         if (id == 0) {
@@ -97,6 +188,7 @@ class Player {
         if (id === 3) {
             this.defaultDirection = Direction.UP;
         }
+        this.goalSquares = this.goals[id].map(i => grid.getSquare(i.split("")[0], i.split("")[1]));
     }
     canMoveDefaultDirection() {
         return this.square.availableMoves.find(a => a === this.defaultDirection);
@@ -200,6 +292,9 @@ class Actions {
         console.log(`${x} ${y} ${d}`);
     }
     static debug(message) {
+        if (typeof message !== "string") {
+            console.log(JSON.stringify(message));
+        }
         console.error(message);
     }
 }
@@ -222,11 +317,11 @@ while (true) {
         //Initial Setup
         if (game.me === null && i === game.myId) {
             const square = grid.getSquare(x, y);
-            game.me = new Player(i, square);
+            game.me = new Player(i, square, grid);
         }
         if (game.others.length < playerCount - 1 && i !== game.myId) {
             const square = grid.getSquare(x, y);
-            game.others.push(new Player(i, square));
+            game.others.push(new Player(i, square, grid));
         }
         // End Initial Setup
         // Update walls left
@@ -284,15 +379,8 @@ while (true) {
     // Write an action using console.log()
     // To debug: console.error('Debug messages...');
     // action: LEFT, RIGHT, UP, DOWN or "putX putY putOrientation" to place a wall
-    if (game.playerCount == 2) {
-        if (turns === 3) {
-            game.me.placeWall(game.others[0]);
-        }
-        else {
-            game.me.move();
-        }
-    }
-    else {
-        game.me.move();
-    }
+    const nextSquare = calculateMoves(game.me);
+    const d = grid.getDirection(game.me.square, nextSquare);
+    Actions.debug(d);
+    Actions.move(d);
 }
