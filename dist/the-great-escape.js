@@ -40,16 +40,13 @@ function getPaths(p) {
 }
 function calculateMoves(p) {
     const state = getPaths(p);
-    Actions.debug("final paths");
     const nextId = state.paths
         .filter(p => state.goal.indexOf(p[p.length - 1]) > -1)
         .sort((a, b) => a.length - b.length)[0][1];
-    state.paths.forEach(p => Actions.debug(p.toString()));
     return grid.getSquareById(nextId);
 }
 function calculateDistance(p) {
     const state = getPaths(p);
-    Actions.debug("final paths");
     return state.paths
         .filter(p => state.goal.indexOf(p[p.length - 1]) > -1)
         .sort((a, b) => a.length - b.length)[0].length;
@@ -64,8 +61,29 @@ function findPaths(state) {
         findOptimalPath(path, state, path.length - 1);
     });
 }
-function canWallBePlaced(x, y, wd, game) {
+function canWallBePlaced(x, y, wd, walls) {
     let canBePlaced = true;
+    for (let i = 0; i < walls.length; i++) {
+        const wall = walls[i];
+        if (wall.x === x && wall.y === y) {
+            canBePlaced = false;
+            break;
+        }
+        if (wall.d === wd) {
+            if (wd === WallDirection.Vertical &&
+                wall.x === x &&
+                Math.abs(y - wall.y) < 2) {
+                canBePlaced = false;
+                break;
+            }
+            if (wd === WallDirection.Horizontal &&
+                wall.y === y &&
+                Math.abs(x - wall.x) < 2) {
+                canBePlaced = false;
+                break;
+            }
+        }
+    }
     return canBePlaced;
 }
 function findOptimalPath(currentPath, state, index) {
@@ -245,8 +263,7 @@ class Player {
     canMoveDefaultDirection() {
         return this.square.availableMoves.find(a => a === this.defaultDirection);
     }
-    placeWall(p) {
-        Actions.debug("place wall");
+    makeWall(p) {
         const direction = p.defaultDirection;
         const currentSquare = p.square;
         let wd = null;
@@ -254,37 +271,31 @@ class Player {
         if (direction === Direction.RIGHT) {
             Actions.debug("place wall - right");
             wd = WallDirection.Vertical;
-            sq = grid.getSquare(currentSquare.x + 2, currentSquare.y);
+            sq = grid.getSquare(currentSquare.x + 1, currentSquare.y);
         }
         if (direction === Direction.LEFT) {
             Actions.debug("place wall - left");
             wd = WallDirection.Vertical;
-            sq = grid.getSquare(currentSquare.x - 2, currentSquare.y);
+            sq = grid.getSquare(currentSquare.x - 1, currentSquare.y);
         }
         if (direction === Direction.UP) {
             Actions.debug("place wall - up");
             wd = WallDirection.Horizontal;
-            sq = grid.getSquare(currentSquare.x, currentSquare.y - 2);
+            sq = grid.getSquare(currentSquare.x, currentSquare.y - 1);
         }
         if (direction === Direction.DOWN) {
             Actions.debug("place wall - down");
             wd = WallDirection.Horizontal;
-            sq = grid.getSquare(currentSquare.x, currentSquare.y + 2);
+            sq = grid.getSquare(currentSquare.x, currentSquare.y + 1);
         }
-        return `${this.constrainX(sq.x, wd)} ${this.constrainY(sq.y, wd)} ${wd}`;
-    }
-    constrainX(value, wd) {
-        if (wd === WallDirection.Horizontal && value === 0) {
-            return 1;
-        }
-        return value;
-    }
-    constrainY(value, wd) {
-        4;
-        if (wd === WallDirection.Vertical && value === 8) {
-            return 7;
-        }
-        return value;
+        const canBePlaced = canWallBePlaced(sq.x, sq.y, wd, walls);
+        Actions.debug(`wall - ${sq.x} ${sq.y} ${wd} - ${canBePlaced}`);
+        sq.x = sq.x === 0 ? sq.x + 1 : sq.x;
+        return {
+            x: sq.x === 8 ? 7 : sq.x,
+            y: sq.y === 8 ? 7 : sq.y,
+            d: wd
+        };
     }
     move() {
         if (this.canMoveDefaultDirection()) {
@@ -322,12 +333,11 @@ class Actions {
         console.log(`${direction} ${direction}`);
     }
     static placeWall(x, y, d) {
-        console.error(`wall ${x} ${y} ${d}`);
         console.log(`${x} ${y} ${d}`);
     }
     static debug(message) {
         if (typeof message !== "string") {
-            console.log(JSON.stringify(message));
+            console.error(JSON.stringify(message));
         }
         console.error(message);
     }
@@ -366,6 +376,7 @@ while (true) {
         const square = grid.getSquare(x, y);
         player.square = square;
     }
+    let wallsPlaced = 0;
     const wallCount = parseInt(readline()); // number of walls on the board
     walls = [];
     for (let i = 0; i < wallCount; i++) {
@@ -416,11 +427,16 @@ while (true) {
             }
         }
     }
-    if (game.playerCount === 2 && turns > 2) {
-        const myDistance = calculateDistance(game.me);
-        const otherDistance = calculateDistance(game.others[0]);
-        if (myDistance >= otherDistance && game.me.wallsLeft > 0) {
-            game.me.placeWall(game.others[0]);
+    const myDistance = calculateDistance(game.me);
+    const otherDistance = calculateDistance(game.others[0]);
+    if (myDistance >= otherDistance &&
+        game.me.wallsLeft > 0 &&
+        turns % 2 === 1 &&
+        turns > 3 &&
+        wallsPlaced < 2) {
+        const wall = game.me.makeWall(game.others[0]);
+        if (canWallBePlaced(wall.x, wall.y, wall.d, walls)) {
+            Actions.placeWall(wall.x, wall.y, wall.d);
         }
         else {
             const nextSquare = calculateMoves(game.me);
@@ -433,4 +449,9 @@ while (true) {
         const d = grid.getDirection(game.me.square, nextSquare);
         Actions.move(d);
     }
+    // } else {
+    //   const nextSquare = calculateMoves(game.me);
+    //   const d = grid.getDirection(game.me.square, nextSquare);
+    //   Actions.move(d);
+    // }
 }
