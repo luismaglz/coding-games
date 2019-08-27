@@ -64,6 +64,12 @@ function findPaths(state) {
 }
 function canWallBePlaced(x, y, wd, walls) {
     let canBePlaced = true;
+    if (x > 8) {
+        return false;
+    }
+    if (y > 8) {
+        return false;
+    }
     if (wd === WallDirection.Vertical && (x === 0 || y === 8)) {
         return false;
     }
@@ -145,6 +151,26 @@ function findOptimalPath(currentPath, state, index) {
             findOptimalPath(currentPath, state, index + 1);
         }
     });
+}
+function crossWallPayer(p) {
+    if (p.lastAction === Direction.UP) {
+        if (canWallBePlaced(p.square.x, p.square.y, WallDirection.Horizontal, walls)) {
+            return {
+                x: p.square.x,
+                y: p.square.y,
+                d: WallDirection.Horizontal
+            };
+        }
+    }
+    if (p.lastAction === Direction.DOWN) {
+        if (canWallBePlaced(p.square.x, p.square.y + 1, WallDirection.Horizontal, walls)) {
+            return {
+                x: p.square.x,
+                y: p.square.y + 1,
+                d: WallDirection.Horizontal
+            };
+        }
+    }
 }
 var Direction;
 (function (Direction) {
@@ -284,6 +310,11 @@ class Player {
         }
         this.goalSquares = this.goals[id].map(i => grid.getSquare(i.split("")[0], i.split("")[1]));
     }
+    move() {
+        const nextSquare = calculateMoves(this);
+        const d = grid.getDirection(this.square, nextSquare);
+        Actions.move(d);
+    }
     canMoveDefaultDirection() {
         return this.square.availableMoves.find(a => a === this.defaultDirection);
     }
@@ -323,6 +354,13 @@ class Player {
             sq2 = grid.getSquare(currentSquare.x + 1, currentSquare.y + 1);
             sq3 = grid.getSquare(currentSquare.x - 1, currentSquare.y + 1);
         }
+        if (sq3 && canWallBePlaced(sq3.x, sq3.y, wd, walls)) {
+            return {
+                x: sq3.x,
+                y: sq3.y,
+                d: wd
+            };
+        }
         if (sq && canWallBePlaced(sq.x, sq.y, wd, walls)) {
             return {
                 x: sq.x,
@@ -334,13 +372,6 @@ class Player {
             return {
                 x: sq2.x,
                 y: sq2.y,
-                d: wd
-            };
-        }
-        if (sq3 && canWallBePlaced(sq3.x, sq3.y, wd, walls)) {
-            return {
-                x: sq3.x,
-                y: sq3.y,
                 d: wd
             };
         }
@@ -386,6 +417,8 @@ const game = new Game(h, w, playerCount, myId);
 const grid = new Grid(h, w);
 let turns = 0;
 let wallsPlaced = 0;
+let otherAboutToWin = null;
+let lastWall = null;
 // game loop
 while (true) {
     turns++;
@@ -410,6 +443,7 @@ while (true) {
         player.wallsLeft = wallsLeft;
         player.previousSquares.push(player.square);
         const square = grid.getSquare(x, y);
+        player.lastAction = grid.getDirection(player.square, square);
         player.square = square;
     }
     const wallCount = parseInt(readline()); // number of walls on the board
@@ -462,22 +496,17 @@ while (true) {
             }
         }
     }
-    const aboutToWin = game.others.find(o => o.isAboutToWin());
-    if (game.me.wallsLeft === 0 || !aboutToWin) {
-        const nextSquare = calculateMoves(game.me);
-        const d = grid.getDirection(game.me.square, nextSquare);
-        Actions.move(d);
+    const other = game.others[0];
+    if (game.me.wallsLeft === 0 || !other.isAboutToWin()) {
+        game.me.move();
     }
     else {
-        const wall = game.me.makeWall(aboutToWin);
+        const wall = game.me.makeWall(other);
         if (wall) {
-            wallsPlaced = wallsPlaced + 1;
             Actions.placeWall(wall.x, wall.y, wall.d);
         }
         else {
-            const nextSquare = calculateMoves(game.me);
-            const d = grid.getDirection(game.me.square, nextSquare);
-            Actions.move(d);
+            game.me.move();
         }
     }
 }
