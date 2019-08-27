@@ -59,6 +59,7 @@ function getPaths(p: Player): PathFindingState {
 
 function calculateMoves(p: Player): GridSquare {
   const state = getPaths(p);
+  state.paths.forEach(p => Actions.debug(p.toString()));
   const nextId = state.paths
     .filter(p => state.goal.indexOf(p[p.length - 1]) > -1)
     .sort((a, b) => a.length - b.length)[0][1];
@@ -433,16 +434,16 @@ class Player {
 
   isAboutToWin() {
     if (this.defaultDirection === Direction.RIGHT && this.square.x === 7) {
-      return this.canMoveDefaultDirection();
+      return this.canMoveDefaultDirection() !== undefined;
     }
     if (this.defaultDirection === Direction.LEFT && this.square.x === 1) {
-      return this.canMoveDefaultDirection();
+      return this.canMoveDefaultDirection() !== undefined;
     }
     if (this.defaultDirection === Direction.DOWN && this.square.y === 7) {
-      return this.canMoveDefaultDirection();
+      return this.canMoveDefaultDirection() !== undefined;
     }
     if (this.defaultDirection === Direction.UP && this.square.y === 1) {
-      return this.canMoveDefaultDirection();
+      return this.canMoveDefaultDirection() !== undefined;
     }
     return false;
   }
@@ -562,14 +563,14 @@ while (true) {
   }
 
   const aboutToWin = game.others.find(o => o.isAboutToWin());
-  Actions.debug(aboutToWin);
+
   if (game.me.wallsLeft === 0 || !aboutToWin) {
     const nextSquare = calculateMoves(game.me);
     const d = grid.getDirection(game.me.square, nextSquare);
     Actions.move(d);
   } else {
     const wall = game.me.makeWall(aboutToWin);
-    if (canWallBePlaced(wall.x, wall.y, wall.d, walls)) {
+    if (wall) {
       wallsPlaced = wallsPlaced + 1;
       Actions.placeWall(wall.x, wall.y, wall.d);
     } else {
