@@ -438,7 +438,7 @@ function gameLoop() {
             // End Initial Setup
             // Update walls left
             const player = i === myId ? _game.me : _game.others.find(o => o.id === i);
-            if (!player) {
+            if (!player && x > -1) {
                 throw new Error("Game loop could not find player");
             }
             // Update player
