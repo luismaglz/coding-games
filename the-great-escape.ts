@@ -598,7 +598,7 @@ function gameLoop() {
       }
 
       // Update player
-      if (x > -1) {
+      if (x > -1 && player) {
         player.wallsLeft = wallsLeft;
         const square = getSquare(x, y, _squares);
         if (!square) {
