@@ -198,7 +198,22 @@ function updateGridWithWalls(walls: Wall[], squares: GridSquare[]) {
   });
 }
 
-function getBestWall(
+function getWallDelta(
+  walls: Wall[],
+  player: Player,
+  predicted: PredictedPath
+): number {
+  const squares = makeGrid(9, 9);
+  updateGridWithWalls(walls, squares);
+
+  const newPredicted = getPathToClosestPossibleGoal(player, squares);
+  if (!newPredicted) {
+    return predicted.moves;
+  }
+  return newPredicted.moves - predicted.moves;
+}
+
+function filterOutBadWallsForMe(
   walls: Wall[],
   players: Player[],
   me: Player,
@@ -666,11 +681,11 @@ function gameLoop() {
   const playerCount = parseInt(inputs[2]); // number of players (2 or 3)
   const myId = parseInt(inputs[3]); // id of my player (0 = 1st player, 1 = 2nd player, ...)
 
-  let wallsPlaced: number = 0;
   const _game = makeGame(h, w, playerCount);
+  let turns = 0;
   // game loop
   while (true) {
-    // turns++;
+    turns++;
     const _squares = makeGrid(h, w);
     const walls: Wall[] = [];
 
@@ -762,25 +777,46 @@ function gameLoop() {
       (_game.me.id > other.id && mePredicted.moves < otherPredicted.moves) ||
       mePredicted.moves < otherPredicted.moves ||
       _game.me.wallsLeft === 0 ||
-      wallsPlaced === 2
+      turns < 2
     ) {
       Actions.move(mePredicted.nextDirection);
-      wallsPlaced = 0;
     } else {
       // const wall = makeWall(other, otherPredicted, _squares, walls);
-      const possibleWalls = makeWallsToBlockPath(otherPredicted, walls);
-      if (_game.playerCount > 2) {
-        possibleWalls.reverse();
-      }
-      const foundWall = possibleWalls.find(w =>
-        getBestWall([w, ...walls], _game.others, _game.me, mePredicted)
+      const possibleWalls = makeWallsToBlockPath(otherPredicted, walls).filter(
+        w => isPathStillAvailable([...walls, w], [_game.me, ..._game.others])
       );
-      if (foundWall) {
-        Actions.placeWall(foundWall.x, foundWall.y, foundWall.d);
-        wallsPlaced++;
+
+      possibleWalls
+        .filter(w =>
+          filterOutBadWallsForMe(
+            [w, ...walls],
+            _game.others,
+            _game.me,
+            mePredicted
+          )
+        )
+        .sort((aW, bW) => {
+          const aWDelta = getWallDelta(
+            [aW, ...walls],
+            other as Player,
+            otherPredicted
+          );
+          const bWDelta = getWallDelta(
+            [bW, ...walls],
+            other as Player,
+            otherPredicted
+          );
+          return aWDelta - bWDelta;
+        });
+
+      if (possibleWalls[0]) {
+        Actions.placeWall(
+          possibleWalls[0].x,
+          possibleWalls[0].y,
+          possibleWalls[0].d
+        );
       } else {
         Actions.move(mePredicted.nextDirection);
-        wallsPlaced = 0;
       }
     }
   }
