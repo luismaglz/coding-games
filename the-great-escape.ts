@@ -589,7 +589,7 @@ function makeWallsToBlockPath(predicted: PredictedPath, walls: Wall[]): Wall[] {
       return acc;
     }, [])
     .reduce((acc: Wall[], currentPair: string[]) => {
-      // Actions.debug(currentPair);
+      Actions.debug(currentPair);
       acc.push(...createWallToSplit(currentPair[0], currentPair[1], walls));
       return acc;
     }, []);
@@ -606,12 +606,12 @@ function createWallToSplit(a: string, b: string, walls: Wall[]): Wall[] {
     // Vertical wall
     createdWalls.push(
       {
-        x: aX,
+        x: bX > aX ? bX : aX,
         y: aY,
         d: WallDirection.Vertical
       },
       {
-        x: aX,
+        x: bX > aX ? bX : aX,
         y: aY - 1,
         d: WallDirection.Vertical
       }
@@ -621,12 +621,12 @@ function createWallToSplit(a: string, b: string, walls: Wall[]): Wall[] {
     createdWalls.push(
       {
         x: aX,
-        y: aY,
+        y: bY > aY ? bY : aY,
         d: WallDirection.Horizontal
       },
       {
         x: aX - 1,
-        y: aY,
+        y: bY > aY ? bY : aY,
         d: WallDirection.Horizontal
       }
     );
@@ -708,7 +708,7 @@ function gameLoop() {
   const playerCount = parseInt(inputs[2]); // number of players (2 or 3)
   const myId = parseInt(inputs[3]); // id of my player (0 = 1st player, 1 = 2nd player, ...)
 
-  // let wallsPlaced: number = 0;
+  let wallsPlaced: number = 0;
   const _game = makeGame(h, w, playerCount);
   // game loop
   while (true) {
@@ -782,8 +782,14 @@ function gameLoop() {
     const other = _game.others.sort((o1, o2) => {
       const ap = getPathToClosestPossibleGoal(o1, _squares);
       const bp = getPathToClosestPossibleGoal(o2, _squares);
+
       if (ap && bp) {
+        let bpMoves = bp.moves;
+        let apMoves = ap.moves;
+        o2.id > o1.id ? (bpMoves += 1) : (apMoves += 1);
+
         return bp.moves - ap.moves;
+        // return ap.moves - bp.moves;
       }
       return 0;
     })[0];
@@ -816,11 +822,11 @@ function gameLoop() {
       (_game.me.id < other.id && mePredicted.moves <= otherPredicted.moves) ||
       (_game.me.id > other.id && mePredicted.moves < otherPredicted.moves) ||
       mePredicted.moves < otherPredicted.moves ||
-      _game.me.wallsLeft === 0
-      // wallsPlaced === 2
+      _game.me.wallsLeft === 0 ||
+      wallsPlaced === 2
     ) {
       Actions.move(mePredicted.nextDirection);
-      // wallsPlaced = 0;
+      wallsPlaced = 0;
     } else {
       // const wall = makeWall(other, otherPredicted, _squares, walls);
       const beforeFilter = makeWallsToBlockPath(otherPredicted, walls);
@@ -833,7 +839,7 @@ function gameLoop() {
       );
       // Actions.debug(mePredicted);
       // Actions.debug(otherPredicted);
-      // Actions.debug(possibleWalls);
+      Actions.debug(possibleWalls);
       const bestWalls = possibleWalls
         .filter(w =>
           filterOutBadWallsForMe(
@@ -841,7 +847,7 @@ function gameLoop() {
             _game.others,
             _game.me,
             mePredicted,
-            other,
+            other as Player,
             otherPredicted
           )
         )
@@ -866,10 +872,10 @@ function gameLoop() {
 
       if (bestWalls[0]) {
         Actions.placeWall(bestWalls[0].x, bestWalls[0].y, bestWalls[0].d);
-        // wallsPlaced++;
+        wallsPlaced++;
       } else {
         Actions.move(mePredicted.nextDirection);
-        // wallsPlaced = 0;
+        wallsPlaced = 0;
       }
     }
   }
