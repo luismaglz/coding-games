@@ -523,7 +523,7 @@ function gameLoop() {
     const h = parseInt(inputs[1]); // height of the board
     const playerCount = parseInt(inputs[2]); // number of players (2 or 3)
     const myId = parseInt(inputs[3]); // id of my player (0 = 1st player, 1 = 2nd player, ...)
-    let wallsPlaced = 0;
+    // let wallsPlaced: number = 0;
     const _game = makeGame(h, w, playerCount);
     // game loop
     while (true) {
@@ -583,19 +583,22 @@ function gameLoop() {
         updateGridWithWalls(walls, _squares);
         Actions.debug(walls);
         // Actions.debug(getSquareById("00", _squares));
-        // let other: Player | undefined;
-        const other = _game.others.sort((o1, o2) => {
-            const ap = getPathToClosestPossibleGoal(o1, _squares);
-            const bp = getPathToClosestPossibleGoal(o2, _squares);
+        const mePredicted = getPathToClosestPossibleGoal(_game.me, _squares);
+        if (!mePredicted || !mePredicted.nextDirection) {
+            throw new Error("Could not predict my next direction");
+        }
+        const other = _game.others.sort((a, b) => {
+            const ap = getPathToClosestPossibleGoal(a, _squares);
+            const bp = getPathToClosestPossibleGoal(b, _squares);
             if (ap && bp) {
-                let bpMoves = bp.moves;
-                let apMoves = ap.moves;
-                o2.id > o1.id ? (bpMoves += 1) : (apMoves += 1);
-                return bp.moves - ap.moves;
-                // return ap.moves - bp.moves;
+                let apMoves = ap.moves - mePredicted.moves + _game.me.wallsLeft - a.wallsLeft;
+                let bpMoves = bp.moves - mePredicted.moves + _game.me.wallsLeft - b.wallsLeft;
+                b.id > a.id ? (bpMoves += 1) : (apMoves += 1);
+                return bpMoves - apMoves;
             }
             return 0;
         })[0];
+        // let other: Player | undefined;
         // if (_game.me.id === 0) {
         //   other = _game.others.find(o => o.id === 2);
         //   if (!other) {
@@ -612,23 +615,21 @@ function gameLoop() {
         }
         // Play the game
         const otherPredicted = getPathToClosestPossibleGoal(other, _squares);
-        const mePredicted = getPathToClosestPossibleGoal(_game.me, _squares);
         Actions.debug(getSquareById("43", _squares));
-        if (!mePredicted || !otherPredicted || !mePredicted.nextDirection) {
+        if (!otherPredicted) {
             throw new Error("Could not predict my next direction");
         }
         if ((_game.me.id < other.id && mePredicted.moves <= otherPredicted.moves) ||
             (_game.me.id > other.id && mePredicted.moves < otherPredicted.moves) ||
             mePredicted.moves < otherPredicted.moves ||
-            _game.me.wallsLeft === 0 ||
-            wallsPlaced === 2) {
+            _game.me.wallsLeft === 0) {
             Actions.move(mePredicted.nextDirection);
-            wallsPlaced = 0;
+            // wallsPlaced = 0;
         }
         else {
             // const wall = makeWall(other, otherPredicted, _squares, walls);
             const beforeFilter = makeWallsToBlockPath(otherPredicted, walls);
-            Actions.debug(`-------------------------------`);
+            Actions.debug(` beforeFilter -------------------------------`);
             Actions.debug(beforeFilter);
             Actions.debug(otherPredicted);
             Actions.debug(`-------------------------------`);
@@ -648,13 +649,13 @@ function gameLoop() {
             Actions.debug(` Best start -------------------------------`);
             Actions.debug(bestWalls);
             Actions.debug(` Best end   -------------------------------`);
-            if (bestWalls[0]) {
+            if (bestWalls[0] && calculateHManhattan(bestWalls[0], other.square) < 3) {
                 Actions.placeWall(bestWalls[0].x, bestWalls[0].y, bestWalls[0].d);
-                wallsPlaced++;
+                // wallsPlaced++;
             }
             else {
                 Actions.move(mePredicted.nextDirection);
-                wallsPlaced = 0;
+                // wallsPlaced = 0;
             }
         }
     }
