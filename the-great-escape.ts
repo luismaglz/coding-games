@@ -493,47 +493,44 @@ function canWallBePlaced(wall: Wall, walls: Wall[]): boolean {
     return false;
   }
   for (let i = 0; i < walls.length; i++) {
-    const wall = walls[i];
-    if (wall.x === x && wall.y === y && wall.d === wd) {
-      canBePlaced = false;
-      return canBePlaced;
+    const existingWall = walls[i];
+    if (existingWall.x === x && existingWall.y === y && existingWall.d === wd) {
+      return false;
     }
-    if (
-      wall.d === WallDirection.Vertical &&
-      wd === WallDirection.Vertical &&
-      wall.x === x
-    ) {
-      if (wall.y + 1 === y || wall.y - 1 === y) {
-        canBePlaced = false;
-        return canBePlaced;
-      }
-    }
-    if (wall.d === WallDirection.Vertical && wd === WallDirection.Horizontal) {
+
+    if (existingWall.d === WallDirection.Horizontal) {
       if (
-        (wall.x === x && wall.y + 1 === y) ||
-        (wall.x - 1 === x && wall.y + 1 === y)
+        wd === WallDirection.Horizontal &&
+        existingWall.y === y &&
+        Math.abs(existingWall.x - x) === 1
       ) {
-        canBePlaced = false;
-        return canBePlaced;
+        return false;
       }
-    }
-    if (
-      wall.d === WallDirection.Horizontal &&
-      wd === WallDirection.Horizontal &&
-      wall.y === y
-    ) {
-      if (wall.x - 1 === x || wall.x + 1 === x) {
-        canBePlaced = false;
-        return canBePlaced;
-      }
-    }
-    if (wall.d === WallDirection.Horizontal && wd === WallDirection.Vertical) {
+
       if (
-        (wall.x + 1 === x && wall.y - 1 === y) ||
-        (wall.x + 1 === x && wall.y === y)
+        wd === WallDirection.Vertical &&
+        existingWall.x + 1 === x &&
+        existingWall.y - 1 === y
       ) {
-        canBePlaced = false;
-        return canBePlaced;
+        return false;
+      }
+    }
+
+    if (existingWall.d === WallDirection.Vertical) {
+      if (
+        wd === WallDirection.Vertical &&
+        existingWall.x === x &&
+        Math.abs(existingWall.y - y) === 1
+      ) {
+        return false;
+      }
+
+      if (
+        wd === WallDirection.Horizontal &&
+        existingWall.x - 1 === x &&
+        existingWall.y + 1 === y
+      ) {
+        return false;
       }
     }
   }
