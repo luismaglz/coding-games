@@ -192,9 +192,8 @@ function isPathStillAvailable(walls, players) {
 function getPathToClosestPossibleGoal(p, grid, useJPS = false) {
     const goalNodes = p.goalSquares.map(gs => grid.dictionary[gs]);
     const playerNode = grid.dictionary[p.square.id];
-    // Actions.debug(goalNodes);
     const predictedPaths = goalNodes.reduce((paths, goalNode) => {
-        let next = navigateNodes(playerNode, goalNode, grid.dictionary, useJPS);
+        let next = navigateNodes(playerNode, goalNode, goalNodes, grid.dictionary, useJPS);
         if (!next) {
             return paths;
         }
@@ -215,13 +214,15 @@ function getPathToClosestPossibleGoal(p, grid, useJPS = false) {
             moves: path.length,
             next: nextSquare.id,
             path: path.map(p => p.id),
-            nextDirection
+            nextDirection,
+            numberOfPaths: 0
         });
         return paths;
     }, []);
     if (predictedPaths.length === 0) {
         return null;
     }
+    // predictedPaths.forEach(p => (p.numberOfPaths = predictedPaths.length));
     return predictedPaths.sort((a, b) => a.moves - b.moves)[0];
 }
 function allWallsAddJustOneMove(predictedWalls) {
@@ -270,7 +271,7 @@ function getClosestGoal(p, nodes, grid) {
     }, goals[0]);
     return nodes[closest.id];
 }
-function navigateNodes(start, goal, nodes, useJPS = false) {
+function navigateNodes(start, goal, otherGoals, nodes, useJPS = false) {
     const closedList = [];
     const openList = [];
     closedList.push(start);
@@ -282,6 +283,9 @@ function navigateNodes(start, goal, nodes, useJPS = false) {
         }
         closedList.push(nextNode);
         foundGoal = nextNode.id === goal.id ? nextNode : null;
+        if (!foundGoal && otherGoals.findIndex(g => g.id === nextNode.id) > -1) {
+            return null;
+        }
     }
     return foundGoal;
 }
@@ -299,9 +303,7 @@ function traverse(current, goal, openList, closedList, nodes, useJPS = false) {
         return closedList.findIndex(cI => cI.id === currentNode.id) === -1;
     })
         .forEach(s => {
-        const sibling = {
-            ...nodes[s]
-        };
+        const sibling = Object.assign({}, nodes[s]);
         sibling.gCost = (current.gCost || 0) + 1;
         sibling.hCost = calculateHManhattan(sibling, goal);
         sibling.fScore = sibling.hCost + sibling.gCost;
@@ -317,9 +319,7 @@ function traverse(current, goal, openList, closedList, nodes, useJPS = false) {
             openList.push(sibling);
         }
         else if (openItem.fScore < sibling.fScore) {
-            openItem = {
-                ...sibling
-            };
+            openItem = Object.assign({}, sibling);
         }
     });
     const goalNode = openList.find(n => n.id === goal.id);
@@ -337,31 +337,6 @@ function traverse(current, goal, openList, closedList, nodes, useJPS = false) {
     }
     openList.splice(openList.indexOf(lowest), 1);
     return lowest;
-}
-function toGridSquareDictionary(squares, clone = false) {
-    const nodes = {};
-    if (clone) {
-        squares.forEach(s => (nodes[s.id] = s));
-    }
-    else {
-        squares.forEach(s => {
-            nodes[s.id] = {
-                ...s
-            };
-        });
-    }
-    return nodes;
-}
-function flipAction(dir) {
-    if (dir === Direction.LEFT)
-        return Direction.RIGHT;
-    if (dir === Direction.RIGHT)
-        return Direction.LEFT;
-    if (dir === Direction.UP)
-        return Direction.DOWN;
-    if (dir === Direction.DOWN)
-        return Direction.UP;
-    throw new Error("flip Action could not flip action");
 }
 function canWallBePlaced(wall, walls) {
     const x = wall.x;
@@ -451,7 +426,6 @@ function makeWallsToBlockPath(predicted, walls) {
         return acc;
     }, [])
         .reduce((acc, currentPair) => {
-        Actions.debug(currentPair);
         acc.push(...createWallToSplit(currentPair[0], currentPair[1], walls));
         return acc;
     }, []);
@@ -556,7 +530,6 @@ function gameLoop() {
     // game loop
     while (true) {
         const _grid = makeGrid(h, w);
-        // Actions.debug(getSquareById("00", _squares));
         const walls = [];
         for (let i = 0; i < playerCount; i++) {
             var inputs = readline().split(" ");
@@ -605,84 +578,130 @@ function gameLoop() {
                 y: wallY,
                 d: wallOrientation
             });
-            // Update possible moves in square
         }
-        // Actions.debug(walls);
         updateGridWithWalls(walls, _grid);
-        Actions.debug(walls);
-        // Actions.debug(getSquareById("00", _squares));
-        const mePredicted = getPathToClosestPossibleGoal(_game.me, _grid);
+        const mePredicted = getPathToClosestPossibleGoal(_game.me, _grid, true);
         if (!mePredicted || !mePredicted.nextDirection) {
             throw new Error("Could not predict my next direction");
         }
-        const other = _game.others.sort((a, b) => {
-            const ap = getPathToClosestPossibleGoal(a, _grid);
-            const bp = getPathToClosestPossibleGoal(b, _grid);
-            if (ap && bp) {
-                let apMoves = ap.moves - mePredicted.moves + _game.me.wallsLeft - a.wallsLeft;
-                let bpMoves = bp.moves - mePredicted.moves + _game.me.wallsLeft - b.wallsLeft;
-                b.id > a.id ? (bpMoves += 1) : (apMoves += 1);
-                return bpMoves - apMoves;
-            }
-            return 0;
-        })[0];
-        // let other: Player | undefined;
-        // if (_game.me.id === 0) {
-        //   other = _game.others.find(o => o.id === 2);
-        //   if (!other) {
-        //     other = _game.others[0];
-        //   }
-        // } else {
-        //   other = _game.others.find(o => o.id === 0);
-        //   if (!other) {
-        //     other = _game.others[0];
-        //   }
-        // }
-        if (!other) {
-            throw new Error("Could not find other");
-        }
-        // Play the game
-        const otherPredicted = getPathToClosestPossibleGoal(other, _grid);
-        if (!otherPredicted) {
-            throw new Error("Could not predict my next direction");
-        }
-        if ((_game.me.id < other.id && mePredicted.moves <= otherPredicted.moves) ||
-            (_game.me.id > other.id && mePredicted.moves < otherPredicted.moves) ||
-            mePredicted.moves < otherPredicted.moves ||
-            _game.me.wallsLeft === 0) {
-            Actions.move(mePredicted.nextDirection);
-            // wallsPlaced = 0;
+        Actions.debug('1');
+        let other = null;
+        let other2 = null;
+        let otherPredicted = null;
+        let otherPredicted2 = null;
+        Actions.debug('2');
+        if (_game.others.length === 1) {
+            Actions.debug('3');
+            other = _game.others[0];
+            otherPredicted = getPathToClosestPossibleGoal(_game.others[0], _grid);
         }
         else {
-            // const wall = makeWall(other, otherPredicted, _squares, walls);
-            const beforeFilter = makeWallsToBlockPath(otherPredicted, walls);
-            Actions.debug(` beforeFilter -------------------------------`);
-            Actions.debug(beforeFilter);
-            Actions.debug(otherPredicted);
-            Actions.debug(`-------------------------------`);
+            Actions.debug('4');
+            const ap = getPathToClosestPossibleGoal(_game.others[0], _grid);
+            const bp = getPathToClosestPossibleGoal(_game.others[1], _grid);
+            Actions.debug('5');
+            if (ap && bp) {
+                let apMoves = ap.moves -
+                    mePredicted.moves +
+                    _game.me.wallsLeft -
+                    _game.others[0].wallsLeft;
+                let bpMoves = bp.moves -
+                    mePredicted.moves +
+                    _game.me.wallsLeft -
+                    _game.others[1].wallsLeft;
+                _game.others[0].id > _game.others[0].id
+                    ? (bpMoves += 1)
+                    : (apMoves += 1);
+                if (bpMoves > apMoves) {
+                    other = _game.others[1];
+                    otherPredicted = bp;
+                    other2 = _game.others[0];
+                    otherPredicted2 = ap;
+                }
+                else {
+                    other = _game.others[0];
+                    otherPredicted = ap;
+                    other2 = _game.others[1];
+                    otherPredicted2 = bp;
+                }
+            }
+        }
+        Actions.debug('6');
+        if (!other || !otherPredicted) {
+            throw new Error("Could not find other");
+        }
+        const otherMoves = otherPredicted.moves;
+        let meMoves = mePredicted.moves;
+        if (_game.me.id > other.id) {
+            meMoves++;
+        }
+        Actions.debug('7');
+        if (_game.me.wallsLeft === 0 ||
+            (meMoves < otherMoves && otherPredicted.numberOfPaths > 1)) {
+            Actions.debug('8');
+            Actions.move(mePredicted.nextDirection);
+        }
+        else {
+            Actions.debug('9');
             const possibleWalls = makeWallsToBlockPath(otherPredicted, walls).filter(w => isPathStillAvailable([...walls, w], [_game.me, ..._game.others]));
-            // Actions.debug(mePredicted);
-            // Actions.debug(otherPredicted);
-            Actions.debug(possibleWalls);
+            const other2PossibleWalls = [];
+            if (other2 !== null && otherPredicted2 !== null) {
+                other2PossibleWalls.push(...makeWallsToBlockPath(otherPredicted2, walls));
+            }
+            Actions.debug('10');
             const bestWalls = possibleWalls
                 .filter(w => filterOutBadWallsForMe([w, ...walls], _game.others, _game.me, mePredicted, other, otherPredicted))
-                // .reverse();
+                .map(w => {
+                const predicted = {
+                    wall: w,
+                    value: getWallDelta([w, ...walls], other, otherPredicted)
+                };
+                return predicted;
+            })
                 .sort((aW, bW) => {
-                const aWDelta = getWallDelta([aW, ...walls], other, otherPredicted);
-                const bWDelta = getWallDelta([bW, ...walls], other, otherPredicted);
-                return aWDelta - bWDelta;
+                return aW.value - bW.value;
             })
                 .reverse();
-            Actions.debug(` Best start -------------------------------`);
-            Actions.debug(bestWalls);
-            Actions.debug(` Best end   -------------------------------`);
-            if (bestWalls[0] && calculateHManhattan(bestWalls[0], other.square) < 3) {
-                Actions.placeWall(bestWalls[0].x, bestWalls[0].y, bestWalls[0].d);
-                // wallsPlaced++;
+            let wallToPlace = null;
+            let wallToGet2 = null;
+            Actions.debug('11');
+            if (bestWalls.length > 0) {
+                if (allWallsAddSameMoves(bestWalls)) {
+                    wallToPlace = bestWalls[bestWalls.length - 1].wall;
+                }
+                else {
+                    wallToPlace = bestWalls[0].wall;
+                }
+            }
+            Actions.debug('12');
+            if (other2PossibleWalls.length > 0 && bestWalls.length > 0) {
+                const matchingWalls = [];
+                bestWalls.forEach(bw => {
+                    const found = other2PossibleWalls.find(w => {
+                        return w.x === bw.wall.x && w.y === bw.wall.y && w.d === bw.wall.d;
+                    });
+                    if (found) {
+                        matchingWalls.push(found);
+                    }
+                });
+                if (matchingWalls.length > 0) {
+                    wallToGet2 = matchingWalls[0];
+                }
+            }
+            Actions.debug('13');
+            if (wallToGet2 === null &&
+                wallToPlace &&
+                isWallAdjacent(other, bestWalls[0].wall, 1)) {
+                Actions.debug('14');
+                Actions.placeWall(bestWalls[0].wall.x, bestWalls[0].wall.y, bestWalls[0].wall.d);
+            }
+            else if (wallToGet2 !== null) {
+                Actions.debug('15');
+                Actions.placeWall(wallToGet2.x, wallToGet2.y, wallToGet2.d);
             }
             else {
+                Actions.debug('16');
                 Actions.move(mePredicted.nextDirection);
-                // wallsPlaced = 0;
             }
         }
     }
