@@ -1,11 +1,9 @@
 /// <reference path="./definitions.d.ts" />
 
-interface GridSquareDictionary {
-  [key: string]: GridSquare;
-}
+type Dictionary<T> = { [key: string]: T };
 
 interface Grid {
-  dictionary: GridSquareDictionary;
+  dictionary: Dictionary<GridSquare>;
   squares: GridSquare[];
 }
 
@@ -32,6 +30,7 @@ interface PathFindingState {
 }
 
 interface Wall {
+  id: string;
   x: number;
   y: number;
   d: WallDirection;
@@ -157,6 +156,31 @@ function makeGridSquare(x: number, y: number): GridSquare {
   return gridSquare;
 }
 
+function makeAllPossibleWalls(width: number = 9, height: number = 9): Dictionary<boolean> {
+  const walls: Dictionary<boolean> = {};
+  for (let x = 0; x < width - 1; x++) {
+    for (let y = 1; y < height; y++) {
+      walls[`${x}${y}${WallDirection.Horizontal}`] = true;
+    }
+  }
+
+  for (let x = 1; x < width; x++) {
+    for (let y = 0; y < height - 1; y++) {
+      walls[`${x}${y}${WallDirection.Vertical}`] = true;
+    }
+  }
+  return walls;
+}
+
+function makeWall(x: number, y: number, d: WallDirection): Wall {
+  return {
+    id: `${x}${y}${d}`,
+    x,
+    y,
+    d
+  }
+}
+
 function makeGrid(h: number, w: number): Grid {
   // Initialize gamesquares
   const grid: Grid = {
@@ -187,8 +211,21 @@ function removeDirectionFromSquare(
   }
 }
 
-function updateGridWithWalls(walls: Wall[], grid: Grid) {
+function updateAvailableWalls(wall: Wall, walls: Dictionary<boolean>) {
+  walls[wall.id] = false;
 
+  if (wall.d === WallDirection.Horizontal) {
+    walls[`${wall.x - 1}${wall.y}H`] = false;
+    walls[`${wall.x + 1}${wall.y}H`] = false;
+    walls[`${wall.x + 1}${wall.y - 1}V`] = false;
+  }
+  if (wall.d === WallDirection.Vertical) {
+    walls[`${wall.x}${wall.y - 1}V`] = false;
+    walls[`${wall.x}${wall.y + 1}V`] = false;
+    walls[`${wall.x - 1}${wall.y + 1}H`] = false;
+  }
+}
+function updateGridWithWalls(walls: Wall[], grid: Grid) {
   walls.forEach(wall => {
     // Update possible moves in square
     if (wall.d === WallDirection.Vertical) {
@@ -376,7 +413,7 @@ function calculateHManhattan(
 
 function getClosestGoal(
   p: Player,
-  nodes: GridSquareDictionary,
+  nodes: Dictionary<GridSquare>,
   grid: Grid
 ): GridSquare {
   const current = p.square;
@@ -399,7 +436,7 @@ function navigateNodes(
   start: GridSquare,
   goal: GridSquare,
   otherGoals: GridSquare[],
-  nodes: GridSquareDictionary,
+  nodes: Dictionary<GridSquare>,
   useJPS = false
 ): GridSquare | null {
   const closedList: GridSquare[] = [];
@@ -435,7 +472,7 @@ function traverse(
   goal: GridSquare,
   openList: GridSquare[],
   closedList: GridSquare[],
-  nodes: GridSquareDictionary,
+  nodes: Dictionary<GridSquare>,
   useJPS = false
 ) {
   if (!current || !current.siblings) {
@@ -501,54 +538,56 @@ function traverse(
   return lowest;
 }
 
-function canWallBePlaced(wall: Wall, walls: Wall[]): boolean {
-  const x = wall.x;
-  const y = wall.y;
-  const wd = wall.d;
-  let canBePlaced = true;
-  if (x > 8 || x < 0) {
-    return false;
-  }
-  if (y > 8 || y < 0) {
-    return false;
-  }
-  if (wd === WallDirection.Vertical && (x === 0 || y === 8)) {
-    return false;
-  }
-  if (wd === WallDirection.Horizontal && (y === 0 || x === 8)) {
-    return false;
-  }
-  for (let i = 0; i < walls.length; i++) {
-    const existingWall = walls[i];
-    if (existingWall.x === x && existingWall.y === y && existingWall.d === wd) {
-      return false;
-    }
-    if (existingWall.d === WallDirection.Horizontal) {
-      if (wd === WallDirection.Horizontal &&
-        existingWall.y === y &&
-        Math.abs(existingWall.x - x) === 1) {
-        return false;
-      }
-      if (wd === WallDirection.Vertical &&
-        existingWall.x + 1 === x &&
-        existingWall.y - 1 === y) {
-        return false;
-      }
-    }
-    if (existingWall.d === WallDirection.Vertical) {
-      if (wd === WallDirection.Vertical &&
-        existingWall.x === x &&
-        Math.abs(existingWall.y - y) === 1) {
-        return false;
-      }
-      if (wd === WallDirection.Horizontal &&
-        existingWall.x - 1 === x &&
-        existingWall.y + 1 === y) {
-        return false;
-      }
-    }
-  }
-  return canBePlaced;
+function canWallBePlaced(wall: Wall, walls: Dictionary<boolean>): boolean {
+  return walls[wall.id];
+
+  // const x = wall.x;
+  // const y = wall.y;
+  // const wd = wall.d;
+  // let canBePlaced = true;
+  // if (x > 8 || x < 0) {
+  //   return false;
+  // }
+  // if (y > 8 || y < 0) {
+  //   return false;
+  // }
+  // if (wd === WallDirection.Vertical && (x === 0 || y === 8)) {
+  //   return false;
+  // }
+  // if (wd === WallDirection.Horizontal && (y === 0 || x === 8)) {
+  //   return false;
+  // }
+  // for (let i = 0; i < walls.length; i++) {
+  //   const existingWall = walls[i];
+  //   if (existingWall.x === x && existingWall.y === y && existingWall.d === wd) {
+  //     return false;
+  //   }
+  //   if (existingWall.d === WallDirection.Horizontal) {
+  //     if (wd === WallDirection.Horizontal &&
+  //       existingWall.y === y &&
+  //       Math.abs(existingWall.x - x) === 1) {
+  //       return false;
+  //     }
+  //     if (wd === WallDirection.Vertical &&
+  //       existingWall.x + 1 === x &&
+  //       existingWall.y - 1 === y) {
+  //       return false;
+  //     }
+  //   }
+  //   if (existingWall.d === WallDirection.Vertical) {
+  //     if (wd === WallDirection.Vertical &&
+  //       existingWall.x === x &&
+  //       Math.abs(existingWall.y - y) === 1) {
+  //       return false;
+  //     }
+  //     if (wd === WallDirection.Horizontal &&
+  //       existingWall.x - 1 === x &&
+  //       existingWall.y + 1 === y) {
+  //       return false;
+  //     }
+  //   }
+  // }
+  // return canBePlaced;
 }
 
 function getSquare(x: number, y: number, grid: Grid) {
@@ -584,7 +623,7 @@ function getDirection(square: GridSquare, next: GridSquare): Direction {
   return Direction.DOWN;
 }
 
-function makeWallsToBlockPath(predicted: PredictedPath, walls: Wall[]): Wall[] {
+function makeWallsToBlockPath(predicted: PredictedPath, walls: Dictionary<boolean>): Wall[] {
   return predicted.path
     .slice(0)
     .reduce((acc: string[][], id: string, index, array) => {
@@ -600,7 +639,7 @@ function makeWallsToBlockPath(predicted: PredictedPath, walls: Wall[]): Wall[] {
     }, []);
 }
 
-function createWallToSplit(a: string, b: string, walls: Wall[]): Wall[] {
+function createWallToSplit(a: string, b: string, walls: Dictionary<boolean>): Wall[] {
   const createdWalls: Wall[] = [];
   const aX = parseInt(a[0], 10);
   const aY = parseInt(a[1], 10);
@@ -610,30 +649,30 @@ function createWallToSplit(a: string, b: string, walls: Wall[]): Wall[] {
   if (aY === bY) {
     // Vertical wall
     createdWalls.push(
-      {
-        x: bX > aX ? bX : aX,
-        y: aY,
-        d: WallDirection.Vertical
-      },
-      {
-        x: bX > aX ? bX : aX,
-        y: aY - 1,
-        d: WallDirection.Vertical
-      }
+      makeWall(
+        bX > aX ? bX : aX,
+        aY,
+        WallDirection.Vertical
+      ),
+      makeWall(
+        bX > aX ? bX : aX,
+        aY - 1,
+        WallDirection.Vertical
+      )
     );
   } else if (aX === bX) {
     // Horizontal wall
     createdWalls.push(
-      {
-        x: aX,
-        y: bY > aY ? bY : aY,
-        d: WallDirection.Horizontal
-      },
-      {
-        x: aX - 1,
-        y: bY > aY ? bY : aY,
-        d: WallDirection.Horizontal
-      }
+      makeWall(
+        aX,
+        bY > aY ? bY : aY,
+        WallDirection.Horizontal
+      ),
+      makeWall(
+        aX - 1,
+        bY > aY ? bY : aY,
+        WallDirection.Horizontal
+      )
     );
   } else {
     throw new Error(
@@ -643,78 +682,15 @@ function createWallToSplit(a: string, b: string, walls: Wall[]): Wall[] {
   return createdWalls.filter(w => canWallBePlaced(w, walls));
 }
 
-function makeWall(
-  p: Player,
-  predicted: PredictedPath,
-  grid: Grid,
-  walls: Wall[]
-): Wall | undefined {
-  const currentSquare = p.square;
-  let wd = null;
-  let sq = null;
-  let sq2 = null;
-  let sq3 = null;
-  wd =
-    predicted.nextDirection === Direction.UP ||
-      predicted.nextDirection === Direction.DOWN
-      ? WallDirection.Horizontal
-      : WallDirection.Vertical;
-
-  if (predicted.nextDirection === Direction.RIGHT) {
-    sq = getSquare(currentSquare.x + 1, currentSquare.y, grid);
-    sq2 = getSquare(currentSquare.x + 1, currentSquare.y + 1, grid);
-    sq3 = getSquare(currentSquare.x + 1, currentSquare.y - 1, grid);
-  }
-  if (predicted.nextDirection === Direction.LEFT) {
-    sq = getSquare(currentSquare.x, currentSquare.y, grid);
-    sq2 = getSquare(currentSquare.x, currentSquare.y + 1, grid);
-    sq3 = getSquare(currentSquare.x, currentSquare.y - 1, grid);
-  }
-  if (predicted.nextDirection === Direction.UP) {
-    sq = getSquare(currentSquare.x, currentSquare.y, grid);
-    sq2 = getSquare(currentSquare.x - 1, currentSquare.y, grid);
-    sq3 = getSquare(currentSquare.x + 1, currentSquare.y, grid);
-  }
-  if (predicted.nextDirection === Direction.DOWN) {
-    sq = getSquare(currentSquare.x, currentSquare.y + 1, grid);
-    sq2 = getSquare(currentSquare.x + 1, currentSquare.y + 1, grid);
-    sq3 = getSquare(currentSquare.x - 1, currentSquare.y + 1, grid);
-  }
-
-  if (sq3 && canWallBePlaced({ x: sq3.x, y: sq3.y, d: wd }, walls)) {
-    return {
-      x: sq3.x,
-      y: sq3.y,
-      d: wd
-    };
-  }
-  if (sq && canWallBePlaced({ x: sq.x, y: sq.y, d: wd }, walls)) {
-    return {
-      x: sq.x,
-      y: sq.y,
-      d: wd
-    };
-  }
-  if (sq2 && canWallBePlaced({ x: sq2.x, y: sq2.y, d: wd }, walls)) {
-    return {
-      x: sq2.x,
-      y: sq2.y,
-      d: wd
-    };
-  }
-
-  return;
-}
-
 function gameLoop() {
   var inputs = readline().split(" ");
   const w = parseInt(inputs[0]); // width of the board
   const h = parseInt(inputs[1]); // height of the board
   const playerCount = parseInt(inputs[2]); // number of players (2 or 3)
   const myId = parseInt(inputs[3]); // id of my player (0 = 1st player, 1 = 2nd player, ...)
-
-  // let wallsPlaced: number = 0;
+  const _walls = makeAllPossibleWalls();
   const _game = makeGame(h, w, playerCount);
+
   // game loop
   while (true) {
     const _grid = makeGrid(h, w);
@@ -767,38 +743,30 @@ function gameLoop() {
       const wallX = parseInt(inputs[0]); // x-coordinate of the wall
       const wallY = parseInt(inputs[1]); // y-coordinate of the wall
       const wallOrientation = inputs[2]; // wall orientation ('H' or 'V')
-      walls.push({
-        x: wallX,
-        y: wallY,
-        d: wallOrientation as WallDirection
-      });
-
+      walls.push(makeWall(
+        wallX,
+        wallY,
+        wallOrientation as WallDirection
+      ));
     }
-
+    walls.forEach(w => updateAvailableWalls(w, _walls));
     updateGridWithWalls(walls, _grid);
     const mePredicted = getPathToClosestPossibleGoal(_game.me, _grid, true);
 
     if (!mePredicted || !mePredicted.nextDirection) {
       throw new Error("Could not predict my next direction");
     }
-    Actions.debug('1');
     let other: Player | null = null;
     let other2: Player | null = null;
     let otherPredicted: PredictedPath | null = null;
     let otherPredicted2: PredictedPath | null = null;
-    Actions.debug('2');
 
     if (_game.others.length === 1) {
-      Actions.debug('3');
-
       other = _game.others[0];
       otherPredicted = getPathToClosestPossibleGoal(_game.others[0], _grid);
     } else {
-      Actions.debug('4');
-
       const ap = getPathToClosestPossibleGoal(_game.others[0], _grid);
       const bp = getPathToClosestPossibleGoal(_game.others[1], _grid);
-      Actions.debug('5');
 
       if (ap && bp) {
         let apMoves = ap.moves -
@@ -826,8 +794,6 @@ function gameLoop() {
         }
       }
     }
-    Actions.debug('6');
-
     if (!other || !otherPredicted) {
       throw new Error("Could not find other");
     }
@@ -836,23 +802,16 @@ function gameLoop() {
     if (_game.me.id > other.id) {
       meMoves++;
     }
-    Actions.debug('7');
 
     if (_game.me.wallsLeft === 0 ||
       (meMoves < otherMoves && otherPredicted.numberOfPaths > 1)) {
-      Actions.debug('8');
-
       Actions.move(mePredicted.nextDirection);
     } else {
-      Actions.debug('9');
-
-      const possibleWalls = makeWallsToBlockPath(otherPredicted, walls).filter(w => isPathStillAvailable([...walls, w], [_game.me, ..._game.others]));
+      const possibleWalls = makeWallsToBlockPath(otherPredicted, _walls).filter(w => isPathStillAvailable([...walls, w], [_game.me, ..._game.others]));
       const other2PossibleWalls: Wall[] = [];
       if (other2 !== null && otherPredicted2 !== null) {
-        other2PossibleWalls.push(...makeWallsToBlockPath(otherPredicted2, walls));
+        other2PossibleWalls.push(...makeWallsToBlockPath(otherPredicted2, _walls));
       }
-      Actions.debug('10');
-
       const bestWalls = possibleWalls
         .filter(w => filterOutBadWallsForMe([w, ...walls], _game.others, _game.me, mePredicted, other!, otherPredicted!))
         .map(w => {
@@ -868,7 +827,6 @@ function gameLoop() {
         .reverse();
       let wallToPlace = null;
       let wallToGet2 = null;
-      Actions.debug('11');
 
       if (bestWalls.length > 0) {
         if (allWallsAddSameMoves(bestWalls)) {
@@ -878,7 +836,6 @@ function gameLoop() {
           wallToPlace = bestWalls[0].wall;
         }
       }
-      Actions.debug('12');
 
       if (other2PossibleWalls.length > 0 && bestWalls.length > 0) {
         const matchingWalls: Wall[] = [];
@@ -894,23 +851,17 @@ function gameLoop() {
           wallToGet2 = matchingWalls[0];
         }
       }
-      Actions.debug('13');
 
       if (wallToGet2 === null &&
         wallToPlace &&
         isWallAdjacent(other, bestWalls[0].wall, 1)) {
-        Actions.debug('14');
 
         Actions.placeWall(bestWalls[0].wall.x, bestWalls[0].wall.y, bestWalls[0].wall.d);
       }
       else if (wallToGet2 !== null) {
-        Actions.debug('15');
-
         Actions.placeWall(wallToGet2.x, wallToGet2.y, wallToGet2.d);
       }
       else {
-        Actions.debug('16');
-
         Actions.move(mePredicted.nextDirection);
       }
     }
