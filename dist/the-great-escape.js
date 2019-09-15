@@ -274,12 +274,22 @@ function allWallsAddSameMoves(predictedWalls) {
     }, predictedWalls[0]);
     return same;
 }
-function isWallAdjacent(player, wall, distance) {
+function isWallAdjacent(player, wall, distance, direction) {
     if (wall.d === WallDirection.Vertical) {
-        return Math.abs(wall.x - player.square.x) <= distance;
+        if (direction === Direction.LEFT) {
+            return Math.abs(wall.x - player.square.x) <= distance - 1;
+        }
+        else {
+            return Math.abs(wall.x - player.square.x) <= distance;
+        }
     }
     else {
-        return Math.abs(wall.y - player.square.y) <= distance;
+        if (direction === Direction.UP) {
+            return Math.abs(wall.y - player.square.y) <= distance - 1;
+        }
+        else {
+            return Math.abs(wall.y - player.square.y) <= distance;
+        }
     }
 }
 function calculateDistanceToWall(player, wall) {
@@ -595,7 +605,7 @@ function gameLoop() {
                     wallToPlace = bestWalls[0].wall;
                 }
             }
-            if (wallToPlace && isWallAdjacent(other, bestWalls[0].wall, 1)) {
+            if (wallToPlace && isWallAdjacent(other, bestWalls[0].wall, 1, otherPredicted.nextDirection)) {
                 Actions.placeWall(bestWalls[0].wall.x, bestWalls[0].wall.y, bestWalls[0].wall.d);
             }
             else {
