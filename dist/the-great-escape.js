@@ -485,6 +485,52 @@ function createWallToSplit(a, b, walls) {
     }
     return createdWalls.filter(w => canWallBePlaced(w, walls));
 }
+function updateGameState(_game, playerCount, myId, _grid, walls) {
+    for (let i = 0; i < playerCount; i++) {
+        var inputs = readline().split(" ");
+        const x = parseInt(inputs[0]); // x-coordinate of the player
+        const y = parseInt(inputs[1]); // y-coordinate of the player
+        const wallsLeft = parseInt(inputs[2]); // number of walls available for the player
+        //Initial Setup
+        if (_game.me.id === -1 && i === myId) {
+            const square = getSquare(x, y, _grid);
+            _game.me = makePlayer(i, square);
+        }
+        if (_game.others.length < playerCount - 1 && i !== myId) {
+            const square = getSquare(x, y, _grid);
+            _game.others.push(makePlayer(i, square));
+        }
+        // End Initial Setup
+        // Update walls left
+        const player = i === myId ? _game.me : _game.others.find(o => o.id === i);
+        if (!player && x > -1) {
+            throw new Error("Game loop could not find player");
+        }
+        // Update player
+        if (x > -1 && player) {
+            player.wallsLeft = wallsLeft;
+            const square = getSquare(x, y, _grid);
+            if (!square) {
+                throw new Error("Game loop could not find player square");
+            }
+            player.square = square;
+        }
+        else {
+            _game.others.splice(_game.others.findIndex(o => o.id === i), 1);
+        }
+    }
+    if (!_game.me) {
+        throw new Error("game doesnt have me");
+    }
+    const wallCount = parseInt(readline()); // number of walls on the board
+    for (let i = 0; i < wallCount; i++) {
+        var inputs = readline().split(" ");
+        const wallX = parseInt(inputs[0]); // x-coordinate of the wall
+        const wallY = parseInt(inputs[1]); // y-coordinate of the wall
+        const wallOrientation = inputs[2]; // wall orientation ('H' or 'V')
+        walls.push(makeWall(wallX, wallY, wallOrientation));
+    }
+}
 function gameLoop() {
     var inputs = readline().split(" ");
     const w = parseInt(inputs[0]); // width of the board
@@ -497,111 +543,36 @@ function gameLoop() {
     while (true) {
         const _grid = makeGrid(h, w);
         const walls = [];
-        for (let i = 0; i < playerCount; i++) {
-            var inputs = readline().split(" ");
-            const x = parseInt(inputs[0]); // x-coordinate of the player
-            const y = parseInt(inputs[1]); // y-coordinate of the player
-            const wallsLeft = parseInt(inputs[2]); // number of walls available for the player
-            //Initial Setup
-            if (_game.me.id === -1 && i === myId) {
-                const square = getSquare(x, y, _grid);
-                _game.me = makePlayer(i, square);
-            }
-            if (_game.others.length < playerCount - 1 && i !== myId) {
-                const square = getSquare(x, y, _grid);
-                _game.others.push(makePlayer(i, square));
-            }
-            // End Initial Setup
-            // Update walls left
-            const player = i === myId ? _game.me : _game.others.find(o => o.id === i);
-            if (!player && x > -1) {
-                throw new Error("Game loop could not find player");
-            }
-            // Update player
-            if (x > -1 && player) {
-                player.wallsLeft = wallsLeft;
-                const square = getSquare(x, y, _grid);
-                if (!square) {
-                    throw new Error("Game loop could not find player square");
-                }
-                player.square = square;
-            }
-            else {
-                _game.others.splice(_game.others.findIndex(o => o.id === i), 1);
-            }
-        }
-        if (!_game.me) {
-            throw new Error("game doesnt have me");
-        }
-        const wallCount = parseInt(readline()); // number of walls on the board
-        for (let i = 0; i < wallCount; i++) {
-            var inputs = readline().split(" ");
-            const wallX = parseInt(inputs[0]); // x-coordinate of the wall
-            const wallY = parseInt(inputs[1]); // y-coordinate of the wall
-            const wallOrientation = inputs[2]; // wall orientation ('H' or 'V')
-            walls.push(makeWall(wallX, wallY, wallOrientation));
-        }
+        updateGameState(_game, playerCount, myId, _grid, walls);
+        // Update walls and grid
         walls.forEach(w => updateAvailableWalls(w, _walls));
         updateGridWithWalls(walls, _grid);
         const mePredicted = getPathToClosestPossibleGoal(_game.me, _grid, true);
         if (!mePredicted || !mePredicted.nextDirection) {
             throw new Error("Could not predict my next direction");
         }
-        let other = null;
-        let other2 = null;
-        let otherPredicted = null;
-        let otherPredicted2 = null;
-        if (_game.others.length === 1) {
-            other = _game.others[0];
-            otherPredicted = getPathToClosestPossibleGoal(_game.others[0], _grid);
-        }
-        else {
-            const ap = getPathToClosestPossibleGoal(_game.others[0], _grid);
-            const bp = getPathToClosestPossibleGoal(_game.others[1], _grid);
+        const other = _game.others.sort((a, b) => {
+            const ap = getPathToClosestPossibleGoal(a, _grid);
+            const bp = getPathToClosestPossibleGoal(b, _grid);
             if (ap && bp) {
-                let apMoves = ap.moves -
-                    mePredicted.moves +
-                    _game.me.wallsLeft -
-                    _game.others[0].wallsLeft;
-                let bpMoves = bp.moves -
-                    mePredicted.moves +
-                    _game.me.wallsLeft -
-                    _game.others[1].wallsLeft;
-                _game.others[0].id > _game.others[0].id
-                    ? (bpMoves += 1)
-                    : (apMoves += 1);
-                if (bpMoves > apMoves) {
-                    other = _game.others[1];
-                    otherPredicted = bp;
-                    other2 = _game.others[0];
-                    otherPredicted2 = ap;
-                }
-                else {
-                    other = _game.others[0];
-                    otherPredicted = ap;
-                    other2 = _game.others[1];
-                    otherPredicted2 = bp;
-                }
+                let apMoves = ap.moves - mePredicted.moves + _game.me.wallsLeft - a.wallsLeft;
+                let bpMoves = bp.moves - mePredicted.moves + _game.me.wallsLeft - b.wallsLeft;
+                b.id > a.id ? (bpMoves += 1) : (apMoves += 1);
+                return bpMoves - apMoves;
             }
-        }
-        if (!other || !otherPredicted) {
-            throw new Error("Could not find other");
-        }
+            return 0;
+        })[0];
+        const otherPredicted = getPathToClosestPossibleGoal(other, _grid);
         const otherMoves = otherPredicted.moves;
         let meMoves = mePredicted.moves;
         if (_game.me.id > other.id) {
             meMoves++;
         }
-        if (_game.me.wallsLeft === 0 ||
-            (meMoves < otherMoves && otherPredicted.numberOfPaths > 1)) {
+        if (_game.me.wallsLeft === 0 || (meMoves < otherMoves && otherPredicted.numberOfPaths > 1)) {
             Actions.move(mePredicted.nextDirection);
         }
         else {
             const possibleWalls = makeWallsToBlockPath(otherPredicted, _walls).filter(w => isPathStillAvailable([...walls, w], [_game.me, ..._game.others]));
-            const other2PossibleWalls = [];
-            if (other2 !== null && otherPredicted2 !== null) {
-                other2PossibleWalls.push(...makeWallsToBlockPath(otherPredicted2, _walls));
-            }
             const bestWalls = possibleWalls
                 .filter(w => filterOutBadWallsForMe([w, ...walls], _game.others, _game.me, mePredicted, other, otherPredicted))
                 .map(w => {
@@ -616,7 +587,6 @@ function gameLoop() {
             })
                 .reverse();
             let wallToPlace = null;
-            let wallToGet2 = null;
             if (bestWalls.length > 0) {
                 if (allWallsAddSameMoves(bestWalls)) {
                     wallToPlace = bestWalls[bestWalls.length - 1].wall;
@@ -625,27 +595,8 @@ function gameLoop() {
                     wallToPlace = bestWalls[0].wall;
                 }
             }
-            if (other2PossibleWalls.length > 0 && bestWalls.length > 0) {
-                const matchingWalls = [];
-                bestWalls.forEach(bw => {
-                    const found = other2PossibleWalls.find(w => {
-                        return w.x === bw.wall.x && w.y === bw.wall.y && w.d === bw.wall.d;
-                    });
-                    if (found) {
-                        matchingWalls.push(found);
-                    }
-                });
-                if (matchingWalls.length > 0) {
-                    wallToGet2 = matchingWalls[0];
-                }
-            }
-            if (wallToGet2 === null &&
-                wallToPlace &&
-                isWallAdjacent(other, bestWalls[0].wall, 1)) {
+            if (wallToPlace && isWallAdjacent(other, bestWalls[0].wall, 1)) {
                 Actions.placeWall(bestWalls[0].wall.x, bestWalls[0].wall.y, bestWalls[0].wall.d);
-            }
-            else if (wallToGet2 !== null) {
-                Actions.placeWall(wallToGet2.x, wallToGet2.y, wallToGet2.d);
             }
             else {
                 Actions.move(mePredicted.nextDirection);
