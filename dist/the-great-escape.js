@@ -210,10 +210,10 @@ function filterOutBadWallsForMe(walls, players, me, mePredicted, other, otherPre
     }
     return false;
 }
-function isPathStillAvailable(walls, newWall, players) {
+function isPathStillAvailable(walls, players) {
     // update nodes with new wall
     const squares = makeGrid(9, 9);
-    updateGridWithWalls([...walls, newWall], squares);
+    updateGridWithWalls(walls, squares);
     let canEveryoneFinish = true;
     for (let pI = 0; pI < players.length; pI++) {
         const predicted = getPathToClosestPossibleGoal(players[pI], squares);
@@ -361,6 +361,8 @@ function traverse(current, goal, openList, closedList, nodes, useJPS = false) {
             getDirection(current, sibling) !== comingFromDirection) {
             sibling.fScore++;
             sibling.fScore++;
+            sibling.fScore++;
+            sibling.fScore++;
         }
         sibling.fScore = sibling.fScore + 4 - sibling.siblings.length;
         let openItem = openList.find(openItem => openItem.id === sibling.id);
@@ -452,10 +454,17 @@ function createWallToSplit(a, b, walls) {
     }
     return createdWalls.filter(w => canWallBePlaced(w, walls));
 }
+function filterBadWalls(_walls, walls, game, mePredicted, other, otherPredicted) {
+    const pathAvailable = isPathStillAvailable(walls, [game.me, ...game.others]);
+    if (!pathAvailable) {
+        return false;
+    }
+    return filterOutBadWallsForMe(walls, game.others, game.me, mePredicted, other, otherPredicted);
+}
 function makeWallsToBlockPlayer(game, _walls, walls, otherPredicted, other, mePredicted) {
+    const points = wallsToPoints(walls);
     return makeWallsToBlockPath(otherPredicted, _walls)
-        .filter(w => isPathStillAvailable([...walls], w, [game.me, ...game.others]))
-        .filter(w => filterOutBadWallsForMe([w, ...walls], game.others, game.me, mePredicted, other, otherPredicted))
+        .filter(w => filterBadWalls(_walls, [...walls, w], game, mePredicted, other, otherPredicted))
         .map(w => {
         const predicted = {
             wall: w,
@@ -464,9 +473,28 @@ function makeWallsToBlockPlayer(game, _walls, walls, otherPredicted, other, mePr
         return predicted;
     })
         .sort((aW, bW) => {
+        if (aW.value === bW.value) {
+            const wAPoints = countTouchPoints(wallToPoints(aW.wall), points);
+            const wBPoints = countTouchPoints(wallToPoints(bW.wall), points);
+            return wAPoints - wBPoints;
+        }
         return aW.value - bW.value;
-    })
-        .reverse();
+    }).reverse();
+}
+function wallToPoints(wall) {
+    if (wall.d === WallDirection.Horizontal) {
+        return [`${wall.x}${wall.y}`, `${wall.x + 1}${wall.y}`, `${wall.x + 2}${wall.y}`];
+    }
+    return [`${wall.x}${wall.y}`, `${wall.x}${wall.y + 1}`, `${wall.x}${wall.y + 2}`];
+}
+function wallsToPoints(walls) {
+    return walls.reduce((acc, wall) => {
+        acc.push(...wallToPoints(wall));
+        return acc;
+    }, []);
+}
+function countTouchPoints(wallPoints, wallsPoints) {
+    return wallPoints.filter(wp => wallsPoints.indexOf(wp) > -1).length;
 }
 function updateGameState(_game, playerCount, myId, _grid, walls) {
     for (let i = 0; i < playerCount; i++) {
@@ -579,7 +607,6 @@ function gameLoop() {
                 else {
                     const best2Walls = makeWallsToBlockPath(other2Predicted, _walls);
                     const combinedWalls = bestWalls.filter(b2 => best2Walls.findIndex(b => b.id === b2.wall.id) > -1);
-                    Actions.debug(combinedWalls.map(w => w.wall.id));
                     if (combinedWalls.length > 0) {
                         wallToPlace = combinedWalls[0].wall;
                     }
@@ -588,18 +615,9 @@ function gameLoop() {
                     }
                 }
             }
-            // const buffer = _game.others.length;
-            let wallAdjacent = false;
-            Actions.debug(wallToPlace);
-            if (wallToPlace) {
-                if (_game.others.length === 2) {
-                    wallAdjacent = isWallAdjacent(other, wallToPlace, 1, otherPredicted.nextDirection) || isWallAdjacent(other2, wallToPlace, 1, other2Predicted.nextDirection);
-                }
-                else {
-                    wallAdjacent = isWallAdjacent(other, wallToPlace, 1, otherPredicted.nextDirection);
-                }
-            }
-            if (wallToPlace && wallAdjacent) {
+            Actions.debug(bestWalls);
+            const buffer = _game.others.length;
+            if (wallToPlace && isWallAdjacent(other, wallToPlace, buffer, otherPredicted.nextDirection)) {
                 Actions.placeWall(wallToPlace.x, wallToPlace.y, wallToPlace.d);
             }
             else {
