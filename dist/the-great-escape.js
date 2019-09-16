@@ -360,6 +360,7 @@ function traverse(current, goal, openList, closedList, nodes, useJPS = false) {
             comingFromDirection &&
             getDirection(current, sibling) !== comingFromDirection) {
             sibling.fScore++;
+            sibling.fScore++;
         }
         sibling.fScore = sibling.fScore + 4 - sibling.siblings.length;
         let openItem = openList.find(openItem => openItem.id === sibling.id);
@@ -544,7 +545,10 @@ function gameLoop() {
             otherPredicted = otherAPredicted;
         }
         else {
-            if (otherAPredicted.moves > otherBPredicted.moves) {
+            let apMoves = otherAPredicted.moves - mePredicted.moves + _game.me.wallsLeft - _game.others[0].wallsLeft;
+            let bpMoves = otherBPredicted.moves - mePredicted.moves + _game.me.wallsLeft - _game.others[1].wallsLeft;
+            _game.others[0].id > _game.others[0].id ? (bpMoves += 1) : (apMoves += 1);
+            if (bpMoves > apMoves) {
                 Actions.debug('here');
                 other = _game.others[1];
                 otherPredicted = otherBPredicted;
@@ -593,7 +597,8 @@ function gameLoop() {
                     }
                 }
             }
-            if (wallToPlace && isWallAdjacent(other, wallToPlace, 2, otherPredicted.nextDirection)) {
+            const buffer = _game.others.length;
+            if (wallToPlace && isWallAdjacent(other, wallToPlace, buffer, otherPredicted.nextDirection)) {
                 Actions.placeWall(wallToPlace.x, wallToPlace.y, wallToPlace.d);
             }
             else {
