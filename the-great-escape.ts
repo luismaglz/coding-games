@@ -763,14 +763,12 @@ function gameLoop() {
       _game.others[0].id > _game.others[0].id ? (bpMoves += 1) : (apMoves += 1);
 
       if (bpMoves > apMoves) {
-        Actions.debug('here')
         other = _game.others[1];
         otherPredicted = otherBPredicted;
 
         other2 = _game.others[0];
         other2Predicted = otherAPredicted;
       } else {
-        Actions.debug('here2')
         other = _game.others[0];
         otherPredicted = otherAPredicted;
 
@@ -796,13 +794,6 @@ function gameLoop() {
           wallToPlace = bestWalls[0].wall;
         } else {
           const best2Walls = makeWallsToBlockPath(other2Predicted!, _walls);
-          // There are 2 players
-          // Actions.debug(other!);
-          // Actions.debug(otherPredicted);
-          // Actions.debug(other2!);
-          // Actions.debug(other2Predicted!);
-          // Actions.debug(bestWalls.map(w => w.wall.id));
-          // Actions.debug(best2Walls.map(w => w.id));
           const combinedWalls = bestWalls.filter(b2 => best2Walls.findIndex(b => b.id === b2.wall.id) > -1);
           Actions.debug(combinedWalls.map(w => w.wall.id));
           if (combinedWalls.length > 0) {
@@ -813,8 +804,18 @@ function gameLoop() {
         }
       }
 
-      const buffer = _game.others.length;
-      if (wallToPlace && isWallAdjacent(other, wallToPlace, buffer, otherPredicted!.nextDirection!)) {
+
+      // const buffer = _game.others.length;
+      let wallAdjacent: boolean = false;
+      Actions.debug(wallToPlace);
+      if (wallToPlace) {
+        if (_game.others.length === 2) {
+          wallAdjacent = isWallAdjacent(other, wallToPlace, 1, otherPredicted!.nextDirection!) || isWallAdjacent(other2!, wallToPlace, 1, other2Predicted!.nextDirection!)
+        } else {
+          wallAdjacent = isWallAdjacent(other, wallToPlace, 1, otherPredicted!.nextDirection!)
+        }
+      }
+      if (wallToPlace && wallAdjacent) {
         Actions.placeWall(wallToPlace.x, wallToPlace.y, wallToPlace.d);
       }
       else {
