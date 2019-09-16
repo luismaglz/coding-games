@@ -174,14 +174,25 @@ function updateGridWithWalls(walls, grid) {
         }
     });
 }
-function getWallDelta(walls, player, predicted) {
+function getWallDelta(wall, walls, player, predicted) {
     const grid = makeGrid(9, 9);
-    updateGridWithWalls(walls, grid);
+    updateGridWithWalls([wall, ...walls], grid);
     const newPredicted = getPathToClosestPossibleGoal(player, grid);
     if (!newPredicted) {
         return predicted.moves;
     }
-    return newPredicted.moves - predicted.moves;
+    let wallDelta = newPredicted.moves - predicted.moves;
+    // if (wall.d === WallDirection.Horizontal && (wall.x === 0 || wall.x === 7)) {
+    //   wallDelta = wallDelta + 0.2;
+    // }
+    // if (wall.d === WallDirection.Vertical && (wall.y === 0 || wall.y === 7)) {
+    //   wallDelta = wallDelta + 0.2;
+    // }
+    // const touchPoints = countTouchPoints(wallToPoints(wall), wallsToPoints(walls));
+    // if (touchPoints) {
+    //   wallDelta = wallDelta + touchPoints / 10;
+    // }
+    return wallDelta;
 }
 function filterOutBadWallsForMe(walls, players, me, mePredicted, other, otherPredicted) {
     if (!mePredicted) {
@@ -210,8 +221,13 @@ function filterOutBadWallsForMe(walls, players, me, mePredicted, other, otherPre
     }
     return false;
 }
-function isPathStillAvailable(walls, players) {
+function isPathStillAvailable(walls, newWall, players, knownBadWalls) {
     // update nodes with new wall
+    if (knownBadWalls[newWall.id]) {
+        Actions.debug('this shoulnd log');
+        return false;
+    }
+    Actions.debug(newWall.id);
     const squares = makeGrid(9, 9);
     updateGridWithWalls(walls, squares);
     let canEveryoneFinish = true;
@@ -221,6 +237,10 @@ function isPathStillAvailable(walls, players) {
             canEveryoneFinish = false;
             break;
         }
+    }
+    Actions.debug(canEveryoneFinish);
+    if (!canEveryoneFinish) {
+        knownBadWalls[newWall.id] = true;
     }
     return canEveryoneFinish;
 }
@@ -361,8 +381,6 @@ function traverse(current, goal, openList, closedList, nodes, useJPS = false) {
             getDirection(current, sibling) !== comingFromDirection) {
             sibling.fScore++;
             sibling.fScore++;
-            sibling.fScore++;
-            sibling.fScore++;
         }
         sibling.fScore = sibling.fScore + 4 - sibling.siblings.length;
         let openItem = openList.find(openItem => openItem.id === sibling.id);
@@ -454,26 +472,39 @@ function createWallToSplit(a, b, walls) {
     }
     return createdWalls.filter(w => canWallBePlaced(w, walls));
 }
-function filterBadWalls(_walls, walls, game, mePredicted, other, otherPredicted) {
-    const pathAvailable = isPathStillAvailable(walls, [game.me, ...game.others]);
+function filterBadWalls(_walls, walls, newWall, game, mePredicted, other, otherPredicted, knownBadWalls, force = false) {
+    if (knownBadWalls[newWall.id]) {
+        Actions.debug(knownBadWalls);
+        return false;
+    }
+    const pathAvailable = isPathStillAvailable(walls, newWall, [game.me, ...game.others], knownBadWalls);
     if (!pathAvailable) {
         return false;
     }
-    return filterOutBadWallsForMe(walls, game.others, game.me, mePredicted, other, otherPredicted);
+    if (force) {
+        return true;
+    }
+    return filterOutBadWallsForMe([...walls, newWall], game.others, game.me, mePredicted, other, otherPredicted);
 }
-function makeWallsToBlockPlayer(game, _walls, walls, otherPredicted, other, mePredicted) {
-    return makeWallsToBlockPath(otherPredicted, _walls)
-        .filter(w => filterBadWalls(_walls, [...walls, w], game, mePredicted, other, otherPredicted))
-        .map(w => {
+function makeWallsToBlockPlayer(game, _walls, walls, otherPredicted, other, mePredicted, force = false) {
+    // const date = new Date().getTime();
+    const knownBadWalls = {};
+    const createdWalls = makeWallsToBlockPath(otherPredicted, _walls);
+    Actions.debug(createdWalls);
+    const filteredWalls = createdWalls.filter(w => filterBadWalls(_walls, walls, w, game, mePredicted, other, otherPredicted, knownBadWalls, force));
+    Actions.debug(filteredWalls);
+    const mappedWalls = filteredWalls.map(w => {
         const predicted = {
             wall: w,
-            value: getWallDelta([w, ...walls], other, otherPredicted)
+            value: getWallDelta(w, walls, other, otherPredicted)
         };
         return predicted;
-    })
-        .sort((aW, bW) => {
+    });
+    const sortedWalls = mappedWalls.sort((aW, bW) => {
         return aW.value - bW.value;
     }).reverse();
+    Actions.debug(knownBadWalls);
+    return sortedWalls;
 }
 function wallToPoints(wall) {
     if (wall.d === WallDirection.Horizontal) {
@@ -536,6 +567,9 @@ function updateGameState(_game, playerCount, myId, _grid, walls) {
         walls.push(makeWall(wallX, wallY, wallOrientation));
     }
 }
+function isAboutToWin(predictedPath, player) {
+    return player.goalSquares.indexOf(predictedPath.next) > -1;
+}
 function gameLoop() {
     var inputs = readline().split(" ");
     const w = parseInt(inputs[0]); // width of the board
@@ -552,6 +586,7 @@ function gameLoop() {
         // Update walls and grid
         walls.forEach(w => updateAvailableWalls(w, _walls));
         updateGridWithWalls(walls, _grid);
+        Actions.debug('Here 1');
         const mePredicted = getPathToClosestPossibleGoal(_game.me, _grid, true);
         if (!mePredicted || !mePredicted.nextDirection) {
             throw new Error("Could not predict my next direction");
@@ -588,11 +623,32 @@ function gameLoop() {
         if (_game.me.id > other.id) {
             meMoves++;
         }
+        // let shouldPlaceWall = false;
+        // if (_game.others.length === 2) {
+        //   let aMoves = otherPredicted!.moves + _game.me.id > other.id ? -1 : 0;
+        //   let bMoves = other2Predicted!.moves + _game.me.id > other2!.id ? -1 : 0;
+        //   let meMoves = mePredicted.moves;
+        //   if (meMoves > aMoves || meMoves > bMoves) {
+        //     shouldPlaceWall = true;
+        //   }
+        // } else {
+        //   shouldPlaceWall = !(meMoves < otherMoves && otherPredicted!.numberOfPaths > 1);
+        //   if (_game.me.square === other.square) {
+        //     shouldPlaceWall = true;
+        //   }
+        //   if (bestWalls && bestWalls.length > 0 && bestWalls[0].value > 4) {
+        //     shouldPlaceWall = true;
+        //   }
+        // }
         if (_game.me.wallsLeft === 0 || (meMoves < otherMoves && otherPredicted.numberOfPaths > 1)) {
             Actions.move(mePredicted.nextDirection);
+            Actions.debug('Here 8');
         }
         else {
+            Actions.debug('Here 9');
             const bestWalls = makeWallsToBlockPlayer(_game, _walls, walls, otherPredicted, other, mePredicted);
+            Actions.debug(bestWalls);
+            Actions.debug('Here 10');
             let wallToPlace = null;
             if (bestWalls.length > 0) {
                 if (!other2) {
@@ -612,6 +668,15 @@ function gameLoop() {
             const buffer = _game.others.length;
             if (wallToPlace && isWallAdjacent(other, wallToPlace, buffer, otherPredicted.nextDirection)) {
                 Actions.placeWall(wallToPlace.x, wallToPlace.y, wallToPlace.d);
+            }
+            else if (_game.others.length === 1 && isAboutToWin(otherPredicted, other)) {
+                const lastChanceWalls = makeWallsToBlockPlayer(_game, _walls, walls, otherPredicted, other, mePredicted, true);
+                if (lastChanceWalls.length > 0) {
+                    Actions.placeWall(lastChanceWalls[0].wall.x, lastChanceWalls[0].wall.y, lastChanceWalls[0].wall.d);
+                }
+                else {
+                    Actions.move(mePredicted.nextDirection);
+                }
             }
             else {
                 Actions.move(mePredicted.nextDirection);
