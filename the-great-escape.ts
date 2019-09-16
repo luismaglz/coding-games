@@ -657,7 +657,6 @@ function filterBadWalls(_walls: Dictionary<boolean>, walls: Wall[], game: Game, 
 }
 
 function makeWallsToBlockPlayer(game: Game, _walls: Dictionary<boolean>, walls: Wall[], otherPredicted: PredictedPath, other: Player, mePredicted: PredictedPath): PredictedWall[] {
-  const points = wallsToPoints(walls);
   return makeWallsToBlockPath(otherPredicted!, _walls)
     .filter(w => filterBadWalls(_walls, [...walls, w], game, mePredicted, other, otherPredicted))
     .map(w => {
@@ -668,11 +667,6 @@ function makeWallsToBlockPlayer(game: Game, _walls: Dictionary<boolean>, walls: 
       return predicted;
     })
     .sort((aW, bW) => {
-      if (aW.value === bW.value) {
-        const wAPoints = countTouchPoints(wallToPoints(aW.wall), points);
-        const wBPoints = countTouchPoints(wallToPoints(bW.wall), points);
-        return wAPoints - wBPoints;
-      }
       return aW.value - bW.value;
     }).reverse();
 }
@@ -835,7 +829,6 @@ function gameLoop() {
         }
       }
 
-      Actions.debug(bestWalls);
       const buffer = _game.others.length;
       if (wallToPlace && isWallAdjacent(other, wallToPlace, buffer, otherPredicted!.nextDirection!)) {
         Actions.placeWall(wallToPlace.x, wallToPlace.y, wallToPlace.d);

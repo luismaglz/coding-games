@@ -462,7 +462,6 @@ function filterBadWalls(_walls, walls, game, mePredicted, other, otherPredicted)
     return filterOutBadWallsForMe(walls, game.others, game.me, mePredicted, other, otherPredicted);
 }
 function makeWallsToBlockPlayer(game, _walls, walls, otherPredicted, other, mePredicted) {
-    const points = wallsToPoints(walls);
     return makeWallsToBlockPath(otherPredicted, _walls)
         .filter(w => filterBadWalls(_walls, [...walls, w], game, mePredicted, other, otherPredicted))
         .map(w => {
@@ -473,11 +472,6 @@ function makeWallsToBlockPlayer(game, _walls, walls, otherPredicted, other, mePr
         return predicted;
     })
         .sort((aW, bW) => {
-        if (aW.value === bW.value) {
-            const wAPoints = countTouchPoints(wallToPoints(aW.wall), points);
-            const wBPoints = countTouchPoints(wallToPoints(bW.wall), points);
-            return wAPoints - wBPoints;
-        }
         return aW.value - bW.value;
     }).reverse();
 }
@@ -615,7 +609,6 @@ function gameLoop() {
                     }
                 }
             }
-            Actions.debug(bestWalls);
             const buffer = _game.others.length;
             if (wallToPlace && isWallAdjacent(other, wallToPlace, buffer, otherPredicted.nextDirection)) {
                 Actions.placeWall(wallToPlace.x, wallToPlace.y, wallToPlace.d);
