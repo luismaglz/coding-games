@@ -74,9 +74,9 @@ function makeGridSquare(x, y) {
         y,
         id: `${x}${y}`,
         siblings: [],
-        fScore: 9999,
-        gCost: 9999,
-        hCost: 9999,
+        fScore: 0,
+        gCost: 0,
+        hCost: 0,
         origin: null
     };
     // Remove edge impossible moves
@@ -228,7 +228,7 @@ function isPathStillAvailable(walls, newWall, players, knownBadWalls) {
         return false;
     }
     const squares = makeGrid();
-    updateGridWithWalls(walls, squares);
+    updateGridWithWalls([...walls, newWall], squares);
     let canEveryoneFinish = true;
     for (let pI = 0; pI < players.length; pI++) {
         const predicted = getPathToClosestPossibleGoal(players[pI], squares);
@@ -604,7 +604,19 @@ function gameLoop() {
             let apMoves = otherAPredicted.moves - mePredicted.moves + _game.me.wallsLeft - _game.others[0].wallsLeft;
             let bpMoves = otherBPredicted.moves - mePredicted.moves + _game.me.wallsLeft - _game.others[1].wallsLeft;
             _game.others[0].id > _game.others[0].id ? (bpMoves += 1) : (apMoves += 1);
-            if (bpMoves > apMoves) {
+            if (isAboutToWin(otherBPredicted, _game.others[1])) {
+                other = _game.others[1];
+                otherPredicted = otherBPredicted;
+                other2 = _game.others[0];
+                other2Predicted = otherAPredicted;
+            }
+            else if (isAboutToWin(otherAPredicted, _game.others[0])) {
+                other = _game.others[0];
+                otherPredicted = otherAPredicted;
+                other2 = _game.others[1];
+                other2Predicted = otherBPredicted;
+            }
+            else if (bpMoves > apMoves) {
                 other = _game.others[1];
                 otherPredicted = otherBPredicted;
                 other2 = _game.others[0];
