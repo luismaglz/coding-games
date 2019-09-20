@@ -703,8 +703,13 @@ function gameLoop() {
             Actions.move(mePredicted.nextDirection);
         }
         else {
-            const predictedPaths = otherBPredicted !== null ? [otherAPredicted, otherBPredicted] : [otherAPredicted];
-            const bestWalls = makeWallsToBlockPlayers(_game, _walls, walls, predictedPaths, mePredicted);
+            let bestWalls = [];
+            if (_game.others.length === 2) {
+                bestWalls = makeWallsToBlockPlayers(_game, _walls, walls, [otherAPredicted, otherBPredicted], mePredicted);
+            }
+            else {
+                bestWalls = makeWallsToBlockPlayer(_game, _walls, walls, otherPredicted, other, mePredicted);
+            }
             let wallToPlace = null;
             if (bestWalls.length > 0) {
                 wallToPlace = bestWalls[0].wall;

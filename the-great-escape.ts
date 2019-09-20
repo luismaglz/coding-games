@@ -957,8 +957,12 @@ function gameLoop() {
     if (_game.me.wallsLeft === 0 || (meMoves < otherMoves && otherPredicted!.numberOfPaths > 1 && _game.others.length === 1)) {
       Actions.move(mePredicted.nextDirection);
     } else {
-      const predictedPaths: PredictedPath[] = otherBPredicted !== null ? [otherAPredicted!, otherBPredicted!] :[otherAPredicted!];
-      const bestWalls = makeWallsToBlockPlayers(_game, _walls, walls, predictedPaths, mePredicted);
+      let bestWalls: PredictedWall[] = [];
+      if(_game.others.length === 2) {
+       bestWalls = makeWallsToBlockPlayers(_game, _walls, walls, [otherAPredicted!, otherBPredicted!], mePredicted);
+      } else{
+        bestWalls = makeWallsToBlockPlayer(_game, _walls, walls, otherPredicted!, other, mePredicted);
+      }
 
       let wallToPlace: Wall | null | undefined = null;
 
