@@ -929,8 +929,8 @@ function gameLoop() {
       other = _game.others[0];
       otherPredicted = otherAPredicted;
     } else {
-      let apMoves = otherAPredicted!.moves - mePredicted.moves + _game.me.wallsLeft - _game.others[0].wallsLeft;
-      let bpMoves = otherBPredicted.moves - mePredicted.moves + _game.me.wallsLeft - _game.others[1].wallsLeft;
+      let apMoves = otherAPredicted!.moves;
+      let bpMoves = otherBPredicted.moves;
       // _game.others[0].id > _game.others[0].id ? (bpMoves += 1) : (apMoves += 1);
 
       if (isAboutToWin(otherBPredicted!, _game.others[1])) {
@@ -954,38 +954,66 @@ function gameLoop() {
       meMoves++;
     }
 
-    if (_game.me.wallsLeft === 0 || (meMoves < otherMoves && otherPredicted!.numberOfPaths > 1 && _game.others.length === 1)) {
-      Actions.move(mePredicted.nextDirection);
+    if(_game.others.length === 1){
+      if (_game.me.wallsLeft === 0 || (meMoves < otherMoves && otherPredicted!.numberOfPaths > 1)) {
+        Actions.move(mePredicted.nextDirection);
+      } else {
+        let bestWalls = makeWallsToBlockPlayer(_game, _walls, walls, otherPredicted!, other, mePredicted);
+  
+        let wallToPlace: Wall | null | undefined = null;
+  
+        if (bestWalls.length > 0) {
+          wallToPlace = bestWalls[0].wall;
+        }
+  
+        const buffer = _game.others.length;
+        if (wallToPlace && isWallAdjacent(other, wallToPlace, buffer, otherPredicted!.nextDirection!)) {
+          Actions.placeWall(wallToPlace.x, wallToPlace.y, wallToPlace.d);
+        }
+        else if (isAboutToWin(otherPredicted!, other)) {
+          const lastChanceWalls = makeWallsToBlockPlayer(_game, _walls, walls, otherPredicted!, other, mePredicted, true);
+          if (lastChanceWalls.length > 0) {
+            Actions.placeWall(lastChanceWalls[0].wall.x, lastChanceWalls[0].wall.y, lastChanceWalls[0].wall.d);
+          } else {
+            Actions.move(mePredicted.nextDirection);
+          }
+        }
+        else {
+          Actions.move(mePredicted.nextDirection);
+        }
+      }
     } else {
-      let bestWalls: PredictedWall[] = [];
-      if(_game.others.length === 2) {
-       bestWalls = makeWallsToBlockPlayers(_game, _walls, walls, [otherAPredicted!, otherBPredicted!], mePredicted);
-      } else{
-        bestWalls = makeWallsToBlockPlayer(_game, _walls, walls, otherPredicted!, other, mePredicted);
-      }
+      
+      const myMoves = mePredicted.moves;
+      const p1Moves = otherAPredicted!.moves;
+      const p2Moves = otherBPredicted!.moves;
+      const amILast = myMoves > p1Moves && myMoves > p2Moves;
+      Actions.debug(`p1 moves: ${p1Moves}`);
+      Actions.debug(`p2 moves: ${p2Moves}`);
+      Actions.debug(`my moves: ${myMoves}`);
+      Actions.debug(`Am I Last: ${amILast}`);
 
-      let wallToPlace: Wall | null | undefined = null;
-
-      if (bestWalls.length > 0) {
-        wallToPlace = bestWalls[0].wall;
-      }
-
-      const buffer = _game.others.length;
-      if (wallToPlace && isWallAdjacent(other, wallToPlace, buffer, otherPredicted!.nextDirection!)) {
-        Actions.placeWall(wallToPlace.x, wallToPlace.y, wallToPlace.d);
-      }
-      else if (_game.others.length === 1 && isAboutToWin(otherPredicted!, other)) {
-        const lastChanceWalls = makeWallsToBlockPlayer(_game, _walls, walls, otherPredicted!, other, mePredicted, true);
-        if (lastChanceWalls.length > 0) {
-          Actions.placeWall(lastChanceWalls[0].wall.x, lastChanceWalls[0].wall.y, lastChanceWalls[0].wall.d);
+      if (_game.me.wallsLeft === 0 || !amILast) {
+        Actions.move(mePredicted.nextDirection);
+      } else {
+        let bestWalls = makeWallsToBlockPlayers(_game, _walls, walls, [otherAPredicted!, otherBPredicted!], mePredicted);
+  
+        let wallToPlace: Wall | null | undefined = null;
+  
+        if (bestWalls.length > 0) {
+          wallToPlace = bestWalls[0].wall;
+        }
+  
+        const buffer = _game.others.length;
+        if (wallToPlace && isWallAdjacent(other, wallToPlace, buffer, otherPredicted!.nextDirection!)) {
+          Actions.placeWall(wallToPlace.x, wallToPlace.y, wallToPlace.d);
         } else {
           Actions.move(mePredicted.nextDirection);
         }
       }
-      else {
-        Actions.move(mePredicted.nextDirection);
-      }
     }
+
+ 
   }
 }
 gameLoop();
