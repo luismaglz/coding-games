@@ -538,6 +538,35 @@ function makeWallsToBlockPlayers(game, _walls, walls, playersPredicted, mePredic
             return 1;
         }
         else {
+            if (aW.wall.d === bW.wall.d && aW.wall.d === WallDirection.Horizontal) {
+                if (aW.wall.x === 1 && bW.wall.x === 0) {
+                    return 1;
+                }
+                else if (aW.wall.x === 0 && bW.wall.x === 1) {
+                    return -1;
+                }
+                else if (aW.wall.x === 6 && bW.wall.x === 7) {
+                    return 1;
+                }
+                else if (aW.wall.x === 7 && bW.wall.x === 6) {
+                    return -1;
+                }
+            }
+            else if (aW.wall.d === bW.wall.d &&
+                aW.wall.d === WallDirection.Vertical) {
+                if (aW.wall.y === 1 && bW.wall.y === 0) {
+                    return 1;
+                }
+                else if (aW.wall.y === 0 && bW.wall.y === 1) {
+                    return -1;
+                }
+                else if (aW.wall.y === 6 && bW.wall.y === 7) {
+                    return 1;
+                }
+                else if (aW.wall.y === 7 && bW.wall.y === 6) {
+                    return -1;
+                }
+            }
             return 0;
         }
     });
@@ -650,6 +679,46 @@ function shouldISecureMyPath(me) {
             me.square.id === '80');
     }
 }
+function isAPlayerTryingToSecurePath(players, walls) {
+    for (let pI = 0; pI < players.length; pI++) {
+        const player = players[pI];
+        if (player.id === 0) {
+            if ((player.square.id === '00' || player.square.id === '01') &&
+                (!walls['01H'] || !walls['02H'])) {
+                Actions.debug('here');
+                return player;
+            }
+            if ((player.square.id === '08' || player.square.id === '07') &&
+                (!walls['08H'] || !walls['07H'])) {
+                Actions.debug('here2');
+                return player;
+            }
+        }
+        if (player.id === 1) {
+            if ((player.square.id === '80' || player.square.id === '81') &&
+                (!walls['71H'] || !walls['72H'])) {
+                Actions.debug('here3');
+                return player;
+            }
+            if ((player.square.id === '88' || player.square.id === '87') &&
+                (!walls['78H'] || !walls['87H'])) {
+                Actions.debug('here4');
+                return player;
+            }
+        }
+        if (player.id === 2) {
+            if ((player.square.id === '00' || player.square.id === '10') &&
+                (!walls['10V'] || !walls['20V'])) {
+                return player;
+            }
+            if ((player.square.id === '70' || player.square.id === '80') &&
+                (!walls['80V'] || !walls['70V'])) {
+                return player;
+            }
+        }
+    }
+    return;
+}
 function makeWallToSecureMyPath(turn, me) {
     if (me.id === 0) {
         if (me.square.id === '00') {
@@ -702,6 +771,7 @@ function gameLoop() {
     const myId = parseInt(inputs[3]); // id of my player (0 = 1st player, 1 = 2nd player, ...)
     const _walls = makeAllPossibleWalls();
     const _game = makeGame(h, w, playerCount);
+    let target = null;
     let turns = 0;
     // game loop
     while (true) {
@@ -719,8 +789,39 @@ function gameLoop() {
         const wall = makeWallToSecureMyPath(turns, _game.me);
         const isGooWall = canWallBePlaced(wall, _walls) &&
             isPathStillAvailable(walls, wall, [..._game.others, _game.me], {});
-        if (turns <= 4 && shouldISecureMyPath(_game.me) && isGooWall) {
+        let playerTryingToSecurePath;
+        if (_game.others[0].wallsLeft < 5 && _game.others[0].id === 2) {
+            playerTryingToSecurePath = _game.others[0];
+        }
+        if (!playerTryingToSecurePath &&
+            _game.others[1] &&
+            _game.others[1].wallsLeft < 5 &&
+            _game.others[0].id === 2) {
+            playerTryingToSecurePath = _game.others[1];
+        }
+        if (!playerTryingToSecurePath) {
+            playerTryingToSecurePath = isAPlayerTryingToSecurePath(_game.others, _walls);
+        }
+        if (turns === 3 && playerTryingToSecurePath) {
+            const predicted = getPathToClosestPossibleGoal(playerTryingToSecurePath, _grid);
+            let bestWalls = makeWallsToBlockPlayer(_game, _walls, walls, predicted, playerTryingToSecurePath, mePredicted);
+            Actions.placeWallV2(bestWalls[0].wall);
+        }
+        else if (turns <= 4 &&
+            shouldISecureMyPath(_game.me) &&
+            isGooWall &&
+            mePredicted.moves === 9) {
             Actions.placeWallV2(wall);
+            if (turns === 4) {
+                const otherAPredicted = getPathToClosestPossibleGoal(_game.others[0], _grid);
+                const otherBPredicted = getPathToClosestPossibleGoal(_game.others[1], _grid);
+                if (otherBPredicted && otherBPredicted.moves > otherAPredicted.moves) {
+                    target = _game.others[1];
+                }
+                else {
+                    target = _game.others[0];
+                }
+            }
         }
         else if (_game.others.length === 1) {
             const other = _game.others[0];
@@ -740,7 +841,7 @@ function gameLoop() {
                 if (bestWalls.length > 0) {
                     wallToPlace = bestWalls[0].wall;
                 }
-                const buffer = _game.others.length;
+                const buffer = 1;
                 if (wallToPlace &&
                     isWallAdjacent(other, wallToPlace, buffer, otherPredicted.nextDirection)) {
                     Actions.placeWall(wallToPlace.x, wallToPlace.y, wallToPlace.d);
@@ -762,8 +863,15 @@ function gameLoop() {
         else {
             const otherAPredicted = getPathToClosestPossibleGoal(_game.others[0], _grid);
             const otherBPredicted = getPathToClosestPossibleGoal(_game.others[1], _grid);
+            // if (!target) {
             const isP1AboutToWin = isAboutToWin(otherAPredicted);
             const isP2AboutToWin = isAboutToWin(otherBPredicted);
+            //   if (isP1AboutToWin) {
+            //     target = _game.others[0];
+            //   } else if (isP2AboutToWin) {
+            //     target = _game.others[1];
+            //   }
+            // }
             const myMoves = mePredicted.moves;
             const p1Moves = otherAPredicted.moves;
             const p2Moves = otherBPredicted.moves;
@@ -777,26 +885,29 @@ function gameLoop() {
             else {
                 amILast = myMoves >= p1Moves && myMoves >= p2Moves;
             }
-            Actions.debug(`p1 moves: ${p1Moves}`);
-            Actions.debug(`isP1AboutToWin: ${isP1AboutToWin}`);
-            Actions.debug(`p2 moves: ${p2Moves}`);
-            Actions.debug(`isP2AboutToWin: ${isP2AboutToWin}`);
-            Actions.debug(`my moves: ${myMoves}`);
-            Actions.debug(`Am I Last: ${amILast}`);
-            const isSomeoneGoingToWin = isP1AboutToWin || isP1AboutToWin;
+            // Actions.debug(`p1 moves: ${p1Moves}`);
+            // Actions.debug(`isP1AboutToWin: ${isP1AboutToWin}`);
+            // Actions.debug(`p2 moves: ${p2Moves}`);
+            // Actions.debug(`isP2AboutToWin: ${isP2AboutToWin}`);
+            // Actions.debug(`my moves: ${myMoves}`);
+            // Actions.debug(`Am I Last: ${amILast}`);
+            const isSomeoneGoingToWin = isP1AboutToWin || isP2AboutToWin;
             // Should move
-            if (_game.me.wallsLeft === 0 || (!amILast && !isSomeoneGoingToWin)) {
+            if (_game.me.wallsLeft === 0 ||
+                turns < 7 ||
+                (!amILast && !isSomeoneGoingToWin)) {
+                Actions.debug('moving');
                 Actions.move(mePredicted.nextDirection);
             }
             else {
                 // Should place wall
                 let bestWalls = makeWallsToBlockPlayers(_game, _walls, walls, [otherAPredicted, otherBPredicted], mePredicted);
-                const buffer = 3;
+                const buffer = target ? 1 : 3;
                 if (!bestWalls || bestWalls.length === 0) {
                     Actions.move(mePredicted.nextDirection);
                 }
                 else {
-                    if (isP1AboutToWin) {
+                    if (isP2AboutToWin) {
                         const wallToPlace = bestWalls.find(w => w.playerId === _game.others[0].id);
                         if (wallToPlace) {
                             Actions.placeWallV2(wallToPlace.wall);
