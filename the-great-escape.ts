@@ -1161,7 +1161,7 @@ function gameLoop() {
           mePredicted
         );
 
-        const buffer = 1;
+        const buffer = 3;
         if (!bestWalls || bestWalls.length === 0) {
           Actions.move(mePredicted.nextDirection);
         } else {

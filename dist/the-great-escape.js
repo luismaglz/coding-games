@@ -791,7 +791,7 @@ function gameLoop() {
             else {
                 // Should place wall
                 let bestWalls = makeWallsToBlockPlayers(_game, _walls, walls, [otherAPredicted, otherBPredicted], mePredicted);
-                const buffer = 1;
+                const buffer = 3;
                 if (!bestWalls || bestWalls.length === 0) {
                     Actions.move(mePredicted.nextDirection);
                 }
