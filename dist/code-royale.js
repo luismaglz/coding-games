@@ -96,62 +96,62 @@ function makePreSite(X, Y, id, radius) {
 }
 function getOwner(o) {
     if (o === -1) {
-        return 'NO_OWNER';
+        return "NO_OWNER";
     }
     if (o === 0) {
-        return 'FRIENDLY';
+        return "FRIENDLY";
     }
     if (o === 1) {
-        return 'ENEMY';
+        return "ENEMY";
     }
-    throw new Error('Failed to parse owner type');
+    throw new Error("Failed to parse owner type");
 }
 function getUnitType(u) {
     // -1 = QUEEN, 0 = KNIGHT, 1 = ARCHER
     if (u === -1) {
-        return 'QUEEN';
+        return "QUEEN";
     }
     if (u === 0) {
-        return 'KNIGHT';
+        return "KNIGHT";
     }
     if (u === 1) {
-        return 'ARCHER';
+        return "ARCHER";
     }
-    throw new Error('Failed to parse unit type');
+    throw new Error("Failed to parse unit type");
 }
 function getSiteType(s) {
     // -1 = QUEEN, 0 = KNIGHT, 1 = ARCHER
     if (s === -1) {
-        return 'NONE';
+        return "NONE";
     }
     if (s === 0) {
-        return 'KNIGHT';
+        return "KNIGHT";
     }
     if (s === 1) {
-        return 'ARCHER';
+        return "ARCHER";
     }
     if (s === 2) {
-        return 'GIANT';
+        return "GIANT";
     }
-    throw new Error('Failed to parse SITE TTYPE type');
+    throw new Error("Failed to parse SITE TTYPE type");
 }
 function getStructureType(s) {
     if (s === -1) {
-        return 'NO_STRUCTURE';
+        return "NO_STRUCTURE";
     }
     if (s === 1) {
-        return 'TOWER';
+        return "TOWER";
     }
     if (s === 2) {
-        return 'BARRACKS';
+        return "BARRACKS";
     }
-    throw new Error('Failed to parse STRUCTURE TYPE');
+    throw new Error("Failed to parse STRUCTURE TYPE");
 }
 function makeSite(preSite, ignore1, ignore2, structureType, owner, param1, param2) {
     // const structureType = parseInt(inputs[3]); // -1 = No structure, 2 = Barracks
     // const owner = parseInt(inputs[4]); // -1 = No structure, 0 = Friendly, 1 = Enemy
     const _structureType = getStructureType(structureType);
-    if (_structureType === 'NO_STRUCTURE' || _structureType === 'BARRACKS') {
+    if (_structureType === "NO_STRUCTURE" || _structureType === "BARRACKS") {
         return {
             id: preSite.id,
             X: preSite.X,
@@ -228,7 +228,7 @@ function navigate_points(start, goal, nodes) {
     let foundGoal;
     while (!foundGoal) {
         if (closedList.length === 0) {
-            throw new Error('bad closed list');
+            throw new Error("bad closed list");
         }
         const nextNode = traverse_points(closedList[closedList.length - 1], goal, openList, closedList, nodes);
         closedList.push(nextNode);
@@ -260,7 +260,7 @@ function game_state_read_sites() {
     };
     const numSites = parseInt(readline());
     for (let i = 0; i < numSites; i++) {
-        var inputs = readline().split(' ');
+        var inputs = readline().split(" ");
         const siteId = parseInt(inputs[0]);
         const x = parseInt(inputs[1]);
         const y = parseInt(inputs[2]);
@@ -297,11 +297,11 @@ function game_state_get_state(preSites) {
             array: []
         }
     };
-    var inputs = readline().split(' ');
+    var inputs = readline().split(" ");
     const gold = parseInt(inputs[0]);
     const touchedSite = parseInt(inputs[1]); // -1 if none
     for (let i = 0; i < preSites.array.length; i++) {
-        var inputs = readline().split(' ');
+        var inputs = readline().split(" ");
         const siteId = parseInt(inputs[0]);
         const ignore1 = parseInt(inputs[1]); // used in future leagues
         const ignore2 = parseInt(inputs[2]); // used in future leagues
@@ -315,19 +315,19 @@ function game_state_get_state(preSites) {
     }
     const numUnits = parseInt(readline());
     for (let i = 0; i < numUnits; i++) {
-        var inputs = readline().split(' ');
+        var inputs = readline().split(" ");
         const x = parseInt(inputs[0]);
         const y = parseInt(inputs[1]);
         const owner = getOwner(parseInt(inputs[2]));
         const unitType = getUnitType(parseInt(inputs[3])); // -1 = QUEEN, 0 = KNIGHT, 1 = ARCHER
         const health = parseInt(inputs[4]);
         const unit = makeUnit(x, y, owner, unitType, health);
-        if (owner === 'ENEMY') {
-            if (unitType === 'ARCHER') {
+        if (owner === "ENEMY") {
+            if (unitType === "ARCHER") {
                 enemy_units.archers.dictionary[i] = unit;
                 enemy_units.archers.array.push(unit);
             }
-            else if (unitType === 'KNIGHT') {
+            else if (unitType === "KNIGHT") {
                 enemy_units.knights.dictionary[i] = unit;
                 enemy_units.knights.array.push(unit);
             }
@@ -336,11 +336,11 @@ function game_state_get_state(preSites) {
             }
         }
         else {
-            if (unitType === 'ARCHER') {
+            if (unitType === "ARCHER") {
                 my_units.archers.dictionary[i] = unit;
                 my_units.archers.array.push(unit);
             }
-            else if (unitType === 'KNIGHT') {
+            else if (unitType === "KNIGHT") {
                 my_units.knights.dictionary[i] = unit;
                 my_units.knights.array.push(unit);
             }
@@ -358,7 +358,7 @@ function game_state_get_state(preSites) {
     };
 }
 function action_wait() {
-    console.log('WAIT');
+    console.log("WAIT");
 }
 function action_move(x, y) {
     console.log(`MOVE ${x} ${y}`);
@@ -367,10 +367,10 @@ function action_build(id, type) {
     console.log(`BUILD ${id} BARRACKS-${type}`);
 }
 function action_train(ids) {
-    console.log(['TRAIN', ...ids].join(' '));
+    console.log(["TRAIN", ...ids].join(" "));
 }
 function debug(d) {
-    if (typeof d === 'string') {
+    if (typeof d === "string") {
         console.error(d);
     }
     else {
@@ -391,13 +391,13 @@ while (true) {
     const myQueen = game_state.my_units.queen;
     const x = Math.round(myQueen.X / 64).toFixed(0);
     const y = Math.round(myQueen.Y / 32).toFixed(0);
-    const targetPoint = grid.dictionary['60,4'];
+    const targetPoint = grid.dictionary["60,4"];
     const queen = grid.dictionary[`${x},${y}`];
     debug(`target ${JSON.stringify(targetPoint)}`);
     debug(`queen ${JSON.stringify(queen)}`);
     const result = navigate_to_target(targetPoint, queen);
     debug(result);
-    const resultArray = result.split(',');
+    const resultArray = result.split(",");
     const rX = parseInt(resultArray[0], 10) * 64;
     const rY = parseInt(resultArray[1], 10) * 32;
     action_move(rX, rY);
