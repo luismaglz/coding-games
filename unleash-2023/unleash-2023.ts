@@ -122,7 +122,26 @@ class GameState {
       c.mScan = this.myScannedCreatures.includes(c.creatureId);
       c.fScan = this.foeScannedCreatures.includes(c.creatureId);
     });
+
+    this.removeClaimedFromScans();
   }
+
+  removeClaimedFromScans() {
+    const meClaimed = this.creatures
+      .filter((c) => c.mScan)
+      .map((c) => c.creatureId);
+    this.myDrones.forEach((d) => {
+      d.scans = d.scans.filter((s) => !meClaimed.includes(s));
+    });
+
+    const foeClaimed = this.creatures
+      .filter((c) => c.fScan)
+      .map((c) => c.creatureId);
+    this.foeDrones.forEach((d) => {
+      d.scans = d.scans.filter((s) => !foeClaimed.includes(s));
+    });
+  }
+
   readCreatureCount() {
     const creatureCount: number = parseInt(readline());
     for (let i = 0; i < creatureCount; i++) {
@@ -213,6 +232,7 @@ class GameState {
 
   private readDroneScans() {
     const droneScanCount: number = parseInt(readline());
+
     for (let i = 0; i < droneScanCount; i++) {
       var inputs: string[] = readline().split(" ");
       const droneId: number = parseInt(inputs[0]);
@@ -220,6 +240,15 @@ class GameState {
       if (!this.droneScans[droneId]) this.droneScans[droneId] = [];
       if (!this.droneScans[droneId].includes(creatureId)) {
         this.droneScans[droneId].push(creatureId);
+      }
+
+      let drone = this.myDrones.find((d) => d.droneId === droneId);
+      if (!drone) {
+        drone = this.foeDrones.find((d) => d.droneId === droneId);
+      }
+      if (!drone) throw new Error("Drone not found");
+      if (!drone.scans.includes(creatureId)) {
+        drone.scans.push(creatureId);
       }
     }
   }
@@ -264,10 +293,14 @@ class Drone {
   emergency: number;
   battery: number;
   status: "GOING UP" | "SCANNING" = "SCANNING";
+  scans: number[] = [];
 
   initialX: number;
   targetPoition: { x: number; y: number } = { x: 0, y: 0 };
 
+  resetTank() {
+    this.scans = [];
+  }
   droneActions: DroneAction[] = [
     new GoToTop(),
     new InitialSinkAction(),
@@ -330,7 +363,6 @@ class Creature {
   color: number;
   type: number;
   mScan: boolean = false;
-  mClaimed: boolean = false;
   fScan: boolean = false;
   zone: FishZone;
   constructor(creatureId: number, color: number, type: number) {
@@ -395,7 +427,6 @@ class InitialSinkAction extends DroneAction {
     return false;
   }
 }
-
 class DoNothingAction extends DroneAction {
   constructor() {
     super();
@@ -409,11 +440,9 @@ class DoNothingAction extends DroneAction {
   }
 }
 
-
 class GoToTop extends DroneAction {
-
   runAction(drone: Drone, gameState: GameState): boolean {
-    if (gameState.droneScans[drone.droneId].length >= 2){
+    if (drone.scans.length >= 2) {
       drone.move(drone.droneX, 0, false);
       return true;
     }
@@ -421,7 +450,6 @@ class GoToTop extends DroneAction {
     return false;
   }
 }
-
 
 class DoZone1Action extends DroneAction {
   constructor() {
@@ -431,10 +459,9 @@ class DoZone1Action extends DroneAction {
   runAction(drone: Drone, gameState: GameState): boolean {
     debug("DoZone1Action");
 
-    const droneScannedCreatures = gameState.droneScans[drone.droneId];
-    var unscannedZone1Fish = gameState.creatures.filter(
-      (creature) => !droneScannedCreatures.includes(creature.creatureId)
-    );
+    var unscannedZone1Fish = gameState.creatures
+      .filter((creature) => !drone.scans.includes(creature.creatureId))
+      .filter((c) => !gameState.myScannedCreatures.includes(c.creatureId));
 
     if (unscannedZone1Fish.length === 0) {
       this.completed = true;
@@ -493,7 +520,7 @@ gameState.readCreatureCount();
 // game loop
 while (true) {
   gameState.readGameState();
-  // gameState.log();
+  gameState.log();
   for (let i = 0; i < gameState.myDrones.length; i++) {
     var drone = gameState.myDrones[i];
 
