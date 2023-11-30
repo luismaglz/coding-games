@@ -241,6 +241,10 @@ class Drone {
   move(x: number, y: number, light: boolean) {
     console.log(`MOVE ${x} ${y} ${light ? 1 : 0}`);
   }
+
+  debugPosition() {
+    debug(`Drone ${this.droneId} is at ${this.droneX}, ${this.droneY}`);
+  }
 }
 
 class VisibleCreature {
@@ -303,8 +307,8 @@ function ifLowerThan10BatteryWaitTurnOffLight(drone: Drone) : boolean {
 
 function ifHigherThan2500GoDownUnlessFlaggedToReturn(drone: Drone) : boolean {
   
-  if (drone.droneY > 2500 && drone.status !== "GOING UP") {
-    drone.move(drone.droneX, 2500, false);
+  if (drone.droneY < 2500) {
+    drone.move(drone.droneX, 10000, false);
     return true;
   }
 
