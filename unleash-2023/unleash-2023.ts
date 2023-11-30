@@ -705,6 +705,12 @@ class DoZone2Action extends DroneAction {
   }
 }
 
+class DroneActionLol{
+  light:boolean = false;
+  targetLocation: {x:number, y:number} = {x:0, y:0};
+}
+
+
 class DoZone3Action extends DroneAction {
   constructor() {
     super();
