@@ -523,14 +523,15 @@ class TurnOnLightActionAt extends DroneAction{
 
 
   runAction(drone: Drone, gameState: GameState): boolean {
-    
+    debug(`TurnOnLightActionAt ${this.y}`);
+
     if ((drone.droneY - this.y) < 100){
       drone.wait(true, "Hit marker, light on baby");
       this.completed = true;
       return true;
     }
     
-    drone.move(drone.droneX, this.y, true);
+    drone.move(drone.droneX, this.y, false, "moving to light on");
     return true;
   }
 
