@@ -47,7 +47,7 @@ declare function printErr(message: string): void;
 
 class GameState {
   creatureCount: number;
-  creatures: Creature[];
+  creatures: Creature[] = [];
   myScore: number;
   foeScore: number;
   myScanCount: number;
@@ -64,7 +64,14 @@ class GameState {
   constructor() {}
 
   readGameState() {
-    this.readCreatureCount();
+    // this.readCreatureCount();
+    this.myScannedCreatures = [];
+    this.foeScannedCreatures = [];
+    this.myDrones = [];
+    this.foeDrones = [];
+    this.visibleCreatures = [];
+    this.radarBlips = [];
+
     this.readMyScore();
     this.readFoeScore();
     this.readMyScanCount();
@@ -86,15 +93,15 @@ class GameState {
     }
   }
 
-  readMyScore() {
+  private readMyScore() {
     this.myScore = parseInt(readline());
   }
 
-  readFoeScore() {
+  private readFoeScore() {
     this.foeScore = parseInt(readline());
   }
 
-  readMyScanCount() {
+  private readMyScanCount() {
     const myScanCount: number = parseInt(readline());
     for (let i = 0; i < myScanCount; i++) {
       const creatureId: number = parseInt(readline());
@@ -102,7 +109,7 @@ class GameState {
     }
   }
 
-  readFoeScanCount() {
+  private readFoeScanCount() {
     const foeScanCount: number = parseInt(readline());
     for (let i = 0; i < foeScanCount; i++) {
       const creatureId: number = parseInt(readline());
@@ -110,7 +117,7 @@ class GameState {
     }
   }
 
-  readMyDrones() {
+  private readMyDrones() {
     const myDroneCount: number = parseInt(readline());
     for (let i = 0; i < myDroneCount; i++) {
       var inputs: string[] = readline().split(" ");
@@ -125,7 +132,7 @@ class GameState {
     }
   }
 
-  readFoeDrones() {
+  private readFoeDrones() {
     const foeDroneCount: number = parseInt(readline());
     for (let i = 0; i < foeDroneCount; i++) {
       var inputs: string[] = readline().split(" ");
@@ -140,7 +147,7 @@ class GameState {
     }
   }
 
-  readDroneScans() {
+  private readDroneScans() {
     const droneScanCount: number = parseInt(readline());
     for (let i = 0; i < droneScanCount; i++) {
       var inputs: string[] = readline().split(" ");
@@ -150,7 +157,7 @@ class GameState {
     }
   }
 
-  readVisibleCreatures() {
+  private readVisibleCreatures() {
     const visibleCreatureCount: number = parseInt(readline());
     for (let i = 0; i < visibleCreatureCount; i++) {
       var inputs: string[] = readline().split(" ");
@@ -171,7 +178,7 @@ class GameState {
     }
   }
 
-  readRadarBlips() {
+  private readRadarBlips() {
     const radarBlipCount: number = parseInt(readline());
     for (let i = 0; i < radarBlipCount; i++) {
       var inputs: string[] = readline().split(" ");
@@ -263,67 +270,71 @@ class RadarBlip {
  * Score points by scanning valuable fish faster than your opponent.
  **/
 
-const creatureCount: number = parseInt(readline());
-for (let i = 0; i < creatureCount; i++) {
-  var inputs: string[] = readline().split(" ");
-  const creatureId: number = parseInt(inputs[0]);
-  const color: number = parseInt(inputs[1]);
-  const type: number = parseInt(inputs[2]);
-}
+// const creatureCount: number = parseInt(readline());
+// for (let i = 0; i < creatureCount; i++) {
+//   var inputs: string[] = readline().split(" ");
+//   const creatureId: number = parseInt(inputs[0]);
+//   const color: number = parseInt(inputs[1]);
+//   const type: number = parseInt(inputs[2]);
+// }
+
+const gameState = new GameState();
+gameState.readCreatureCount();
 
 // game loop
 while (true) {
-  const myScore: number = parseInt(readline());
-  const foeScore: number = parseInt(readline());
-  const myScanCount: number = parseInt(readline());
-  for (let i = 0; i < myScanCount; i++) {
-    const creatureId: number = parseInt(readline());
-  }
-  const foeScanCount: number = parseInt(readline());
-  for (let i = 0; i < foeScanCount; i++) {
-    const creatureId: number = parseInt(readline());
-  }
-  const myDroneCount: number = parseInt(readline());
-  for (let i = 0; i < myDroneCount; i++) {
-    var inputs: string[] = readline().split(" ");
-    const droneId: number = parseInt(inputs[0]);
-    const droneX: number = parseInt(inputs[1]);
-    const droneY: number = parseInt(inputs[2]);
-    const emergency: number = parseInt(inputs[3]);
-    const battery: number = parseInt(inputs[4]);
-  }
-  const foeDroneCount: number = parseInt(readline());
-  for (let i = 0; i < foeDroneCount; i++) {
-    var inputs: string[] = readline().split(" ");
-    const droneId: number = parseInt(inputs[0]);
-    const droneX: number = parseInt(inputs[1]);
-    const droneY: number = parseInt(inputs[2]);
-    const emergency: number = parseInt(inputs[3]);
-    const battery: number = parseInt(inputs[4]);
-  }
-  const droneScanCount: number = parseInt(readline());
-  for (let i = 0; i < droneScanCount; i++) {
-    var inputs: string[] = readline().split(" ");
-    const droneId: number = parseInt(inputs[0]);
-    const creatureId: number = parseInt(inputs[1]);
-  }
-  const visibleCreatureCount: number = parseInt(readline());
-  for (let i = 0; i < visibleCreatureCount; i++) {
-    var inputs: string[] = readline().split(" ");
-    const creatureId: number = parseInt(inputs[0]);
-    const creatureX: number = parseInt(inputs[1]);
-    const creatureY: number = parseInt(inputs[2]);
-    const creatureVx: number = parseInt(inputs[3]);
-    const creatureVy: number = parseInt(inputs[4]);
-  }
-  const radarBlipCount: number = parseInt(readline());
-  for (let i = 0; i < radarBlipCount; i++) {
-    var inputs: string[] = readline().split(" ");
-    const droneId: number = parseInt(inputs[0]);
-    const creatureId: number = parseInt(inputs[1]);
-    const radar: string = inputs[2];
-  }
-  for (let i = 0; i < myDroneCount; i++) {
+  //   const myScore: number = parseInt(readline());
+  //   const foeScore: number = parseInt(readline());
+  //   const myScanCount: number = parseInt(readline());
+  //   for (let i = 0; i < myScanCount; i++) {
+  //     const creatureId: number = parseInt(readline());
+  //   }
+  //   const foeScanCount: number = parseInt(readline());
+  //   for (let i = 0; i < foeScanCount; i++) {
+  //     const creatureId: number = parseInt(readline());
+  //   }
+  //   const myDroneCount: number = parseInt(readline());
+  //   for (let i = 0; i < myDroneCount; i++) {
+  //     var inputs: string[] = readline().split(" ");
+  //     const droneId: number = parseInt(inputs[0]);
+  //     const droneX: number = parseInt(inputs[1]);
+  //     const droneY: number = parseInt(inputs[2]);
+  //     const emergency: number = parseInt(inputs[3]);
+  //     const battery: number = parseInt(inputs[4]);
+  //   }
+  //   const foeDroneCount: number = parseInt(readline());
+  //   for (let i = 0; i < foeDroneCount; i++) {
+  //     var inputs: string[] = readline().split(" ");
+  //     const droneId: number = parseInt(inputs[0]);
+  //     const droneX: number = parseInt(inputs[1]);
+  //     const droneY: number = parseInt(inputs[2]);
+  //     const emergency: number = parseInt(inputs[3]);
+  //     const battery: number = parseInt(inputs[4]);
+  //   }
+  //   const droneScanCount: number = parseInt(readline());
+  //   for (let i = 0; i < droneScanCount; i++) {
+  //     var inputs: string[] = readline().split(" ");
+  //     const droneId: number = parseInt(inputs[0]);
+  //     const creatureId: number = parseInt(inputs[1]);
+  //   }
+  //   const visibleCreatureCount: number = parseInt(readline());
+  //   for (let i = 0; i < visibleCreatureCount; i++) {
+  //     var inputs: string[] = readline().split(" ");
+  //     const creatureId: number = parseInt(inputs[0]);
+  //     const creatureX: number = parseInt(inputs[1]);
+  //     const creatureY: number = parseInt(inputs[2]);
+  //     const creatureVx: number = parseInt(inputs[3]);
+  //     const creatureVy: number = parseInt(inputs[4]);
+  //   }
+  //   const radarBlipCount: number = parseInt(readline());
+  //   for (let i = 0; i < radarBlipCount; i++) {
+  //     var inputs: string[] = readline().split(" ");
+  //     const droneId: number = parseInt(inputs[0]);
+  //     const creatureId: number = parseInt(inputs[1]);
+  //     const radar: string = inputs[2];
+  //   }
+  gameState.readGameState();
+  for (let i = 0; i < gameState.myDroneCount; i++) {
     // Write an action using console.log()
     // To debug: console.error('Debug messages...');
 
