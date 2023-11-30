@@ -53,6 +53,7 @@ declare function printErr(message: string): void;
 class GameState {
   creatureCount: number;
   creatures: Creature[] = [];
+  creatureDic: {[key:string]:Creature};
   myScore: number;
   foeScore: number;
   myScanCount: number;
@@ -65,10 +66,17 @@ class GameState {
   foeDroneCount: number = this.foeDrones.length;
   droneScans: { [key: number]: number[] } = {};
   visibleCreatures: VisibleCreature[];
+  visibleCreaturesDic: {[key:string]:VisibleCreature} = {};
   radarBlips: RadarBlip[];
   targetFish: number[];
   monsters: number[];
   turns: number = 0;
+
+
+  lastKnownMonsterLocations:{[key:number]:VisibleCreature} = {
+
+  }
+
   constructor() {}
 
   shouldTurnOnLightOnTicks(): boolean {
@@ -92,6 +100,7 @@ class GameState {
     debug(`visibleCreatures ${JSON.stringify(this.visibleCreatures)}`);
     // debug(`radarBlips ${JSON.stringify(this.radarBlips)}`);
     debug(`monsters ${JSON.stringify(this.monsters)}`);
+    debug(`badGuys ${JSON.stringify(this.lastKnownMonsterLocations)}`);
   }
 
   isMonsterWithinDroneRange(drone: Drone) {
@@ -194,10 +203,15 @@ class GameState {
     const monsters = this.creatures
       .filter((c) => c.type === -1)
       .map((c) => c.creatureId);
+
     // find monsters in visible creatures
     this.monsters = this.visibleCreatures
       .filter((c) => monsters.includes(c.creatureId))
       .map((c) => c.creatureId);
+
+    this.visibleCreatures.filter(c => this.creatureDic[c.creatureId].type === -1).forEach(monster => {
+      this.lastKnownMonsterLocations[monster.creatureId] = monster;
+    })
 
     this.turns++;
   }
@@ -226,6 +240,7 @@ class GameState {
       const color: number = parseInt(inputs[1]);
       const type: number = parseInt(inputs[2]);
       this.creatures.push(new Creature(creatureId, color, type));
+      this.creatureDic[creatureId] = new Creature(creatureId, color, type);
     }
   }
 
@@ -330,6 +345,7 @@ class GameState {
   }
 
   private readVisibleCreatures() {
+    this.visibleCreaturesDic = {};
     const visibleCreatureCount: number = parseInt(readline());
     for (let i = 0; i < visibleCreatureCount; i++) {
       var inputs: string[] = readline().split(" ");
@@ -346,6 +362,13 @@ class GameState {
           creatureVx,
           creatureVy
         )
+      );
+      this.visibleCreaturesDic[creatureId] = new VisibleCreature(
+        creatureId,
+        creatureX,
+        creatureY,
+        creatureVx,
+        creatureVy
       );
     }
   }
@@ -378,6 +401,7 @@ class Drone {
   resetTank() {
     this.scans = [];
   }
+ 
   droneActions: DroneAction[] = [
     new FlashLightEvery3Ticks(),
     new TurnOffLightIfLowBattery(),
@@ -419,7 +443,7 @@ class Drone {
       this.isLeft = true;
     } else {
       this.isLeft = false;
-    }
+    }    
   }
 
   wait(light: boolean, message: string = "") {
@@ -792,6 +816,8 @@ class DroneActionLol{
 
 
 
+
+
 class FlashLightEvery3Ticks extends DroneAction{
   ticks:number = 0;
 
@@ -876,7 +902,12 @@ while (true) {
       }
     }
 
-    // avoidance
+    
+
+    
+    
+
+    
 
 
     if (droneAction.wait){
