@@ -863,6 +863,7 @@ while (true) {
 
     const droneAction = new DroneActionLol();
 
+    // run rules
     for (const action of drone.droneActions) {
       if (action.completed) {
         continue;
@@ -876,6 +877,7 @@ while (true) {
     }
 
     // avoidance
+
 
     if (droneAction.wait){
       drone.wait(droneAction.light, droneAction.message);
