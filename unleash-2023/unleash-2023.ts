@@ -336,6 +336,7 @@ class Drone {
 
   initialX: number;
   targetPoition: { x: number; y: number } = { x: 0, y: 0 };
+  isLeft: boolean;
 
   resetTank() {
     this.scans = [];
@@ -366,6 +367,11 @@ class Drone {
     this.battery = battery;
 
     this.initialX = droneX;
+    if (this.initialX < 5000){
+      this.isLeft= true;
+    }else{
+      this.isLeft = false;
+    }
   }
 
   wait(light: boolean, message: string = "") {
@@ -531,7 +537,9 @@ class TurnOnLightActionAt extends DroneAction{
       return true;
     }
     
-    drone.move(drone.droneX, this.y, false, "moving to light on");
+    // move each drone to the center of it's lane.
+    drone.move(
+      drone.isLeft ? 2500 : 6500, this.y, false, "moving to light on");
     return true;
   }
 
