@@ -66,6 +66,7 @@ class GameState {
   droneScans: { [key: number]: number[] } = {};
   visibleCreatures: VisibleCreature[];
   radarBlips: RadarBlip[];
+  targetFish: number[];
   constructor() {}
 
   log(): void {
@@ -504,7 +505,7 @@ class GoToTop extends DroneAction {
   }
 }
 
-class TurnOnLightAction extends DroneAction{
+class TurnOnLightAction extends DroneAction {
   constructor() {
     super();
   }
@@ -512,7 +513,7 @@ class TurnOnLightAction extends DroneAction{
   runAction(drone: Drone, gameState: GameState): boolean {
     debug("TurnOnLightAction");
 
-    if (drone.battery < 10){
+    if (drone.battery < 10) {
       drone.wait(true, "Waiting cause battery is low");
       return true;
     }
@@ -521,17 +522,15 @@ class TurnOnLightAction extends DroneAction{
   }
 }
 
-class TurnOnLightActionAt extends DroneAction{
-
-  constructor(public y:number){ 
+class TurnOnLightActionAt extends DroneAction {
+  constructor(public y: number) {
     super();
-   }
-
+  }
 
   runAction(drone: Drone, gameState: GameState): boolean {
     debug(`TurnOnLightActionAt ${this.y}`);
 
-    if ((drone.droneY - this.y) < 100){
+    if (Math.abs(drone.droneY - this.y) < 100) {
       drone.wait(true, "Hit marker, light on baby");
       this.completed = true;
       return true;
@@ -542,9 +541,7 @@ class TurnOnLightActionAt extends DroneAction{
       drone.isLeft ? 2500 : 6500, this.y, false, "moving to light on");
     return true;
   }
-
 }
-
 
 class DoZone1Action extends DroneAction {
   constructor() {
