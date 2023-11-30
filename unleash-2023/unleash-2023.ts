@@ -899,6 +899,71 @@ interface Vector {
   endY: number;
 }
 
+function reduceVectorToMaxUnits(vector: Vector, maxUnits: number): Vector {
+  const vectorLength = Math.sqrt(
+    Math.pow(vector.endX - vector.startX, 2) +
+      Math.pow(vector.endY - vector.startY, 2)
+  );
+
+  const vectorUnitX = (vector.endX - vector.startX) / vectorLength;
+  const vectorUnitY = (vector.endY - vector.startY) / vectorLength;
+
+  vector.endX = vector.startX + vectorUnitX * maxUnits;
+  vector.endY = vector.startY + vectorUnitY * maxUnits;
+
+  return vector;
+}
+
+// find out if any bad guy locations are going to insect with our drone's location
+// find out if two vectors are going to intersect
+function moveDroneToTargetWhileAvoidingCreature(
+  Drone: Drone,
+  droneTarget: DroneActionLol,
+  creature: VisibleCreature[]
+) {
+  const maxDroneMoveUnits = 600;
+  const areaCloseToCreatureToAvoid = 500;
+
+  let droneVector = {
+    startX: Drone.droneX,
+    endX: droneTarget.targetLocation.x,
+    startY: Drone.droneY,
+    endY: droneTarget.targetLocation.y,
+  };
+
+  // reduce drone vector to max move units
+  droneVector = reduceVectorToMaxUnits(droneVector, maxDroneMoveUnits);
+
+  const creatureVectors = creature.map((c) => {
+    return {
+      startX: c.creatureX - areaCloseToCreatureToAvoid,
+      endX: c.creatureX + c.creatureVx + areaCloseToCreatureToAvoid,
+      startY: c.creatureY - areaCloseToCreatureToAvoid,
+      endY: c.creatureY + c.creatureVy + areaCloseToCreatureToAvoid,
+    };
+  });
+
+  // check if any creature vectors are going to intersect with our drone vector
+  for (const creatureVector of creatureVectors) {
+    const intersection = getIntersection(droneVector, creatureVector);
+    if (intersection) {
+      // adjust drone vector to avoid creature
+      droneVector.endX = intersection.x;
+      droneVector.endY = intersection.y;
+    }
+  }
+
+  // values should be rouded to the neares integer and within the game board  of 1 to 9999
+  droneVector.endX = Math.round(droneVector.endX);
+  droneVector.endY = Math.round(droneVector.endY);
+  droneVector.endX = Math.max(1, droneVector.endX);
+  droneVector.endX = Math.min(9999, droneVector.endX);
+  droneVector.endY = Math.max(1, droneVector.endY);
+  droneVector.endY = Math.min(9999, droneVector.endY);
+  droneTarget.targetLocation.x = droneVector.endX;
+  droneTarget.targetLocation.y = droneVector.endY;
+}
+
 // find out if any bad guy locations are going to insect with our drone's location
 // find out if two vectors are going to intersect
 function willDroneInterceptCreature(
@@ -997,13 +1062,25 @@ while (true) {
       }
     }
 
-    for (const monst of Object.values(gameState.lastKnownMonsterLocations)) {
-      if (willDroneInterceptCreature(drone, droneAction, monst)) {
-        debug(
-          `Drone ${drone.droneId} will intercept monster ${monst.creatureId}`
+    // for (const monst of Object.values(gameState.lastKnownMonsterLocations)) {
+    //   if (willDroneInterceptCreature(drone, droneAction, monst)) {
+    //     debug(
+    //       `Drone ${drone.droneId} will intercept monster ${monst.creatureId}`
+    //     );
+    //   }
+    // }
+
+    moveDroneToTargetWhileAvoidingCreature(
+      drone,
+      droneAction,
+      Object.values(gameState.lastKnownMonsterLocations).filter((c) => {
+        // we only wants monsters within 1000 units of our drone
+        return (
+          Math.abs(c.creatureX - drone.droneX) < 1000 &&
+          Math.abs(c.creatureY - drone.droneY) < 1000
         );
-      }
-    }
+      })
+    );
 
     if (droneAction.wait) {
       drone.wait(droneAction.light, droneAction.message);
