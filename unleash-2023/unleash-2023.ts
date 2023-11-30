@@ -93,6 +93,7 @@ class GameState {
       .filter((c) => c.zone.id === 1)
       .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
       .filter((c) => !droneScans.includes(c.creatureId))
+      .filter((c) => !this.targetFish.includes(c.creatureId))
       .map((c) => c.creatureId);
   }
 
@@ -106,6 +107,7 @@ class GameState {
       .filter((c) => c.zone.id === 2)
       .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
       .filter((c) => !droneScans.includes(c.creatureId))
+      .filter((c) => !this.targetFish.includes(c.creatureId))
       .map((c) => c.creatureId);
   }
 
@@ -119,6 +121,7 @@ class GameState {
       .filter((c) => c.zone.id === 3)
       .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
       .filter((c) => !droneScans.includes(c.creatureId))
+      .filter((c) => !this.targetFish.includes(c.creatureId))
       .map((c) => c.creatureId);
   }
 
@@ -164,6 +167,7 @@ class GameState {
     });
 
     this.removeClaimedFromScans();
+    this.targetFish = [];
   }
 
   removeClaimedFromScans() {
@@ -551,6 +555,7 @@ class DoZone1Action extends DroneAction {
     }
 
     var firstFish = unscannedZone1Fish[0];
+    gameState.targetFish.push(firstFish);
 
     var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
 
@@ -595,6 +600,7 @@ class DoZone2Action extends DroneAction {
     }
 
     var firstFish = unscannedZone2Fish[0];
+    gameState.targetFish.push(firstFish);
 
     var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
 
@@ -639,6 +645,7 @@ class DoZone3Action extends DroneAction {
     }
 
     var firstFish = unscannedZone3Fish[0];
+    gameState.targetFish.push(firstFish);
 
     var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
 
