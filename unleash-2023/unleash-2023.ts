@@ -54,10 +54,10 @@ class GameState {
   myScannedCreatures: number[];
   foeScabCount: number;
   foeScannedCreatures: number[];
-  myDroneCount: number;
-  foeDroneCount: number;
   myDrones: Drone[] = [];
+  myDroneCount: number = this.myDrones.length;
   foeDrones: Drone[] = [];
+  foeDroneCount: number = this.foeDrones.length;
   droneScans: { [key: number]: number[] };
   visibleCreatures: VisibleCreature[];
   radarBlips: RadarBlip[];
@@ -360,7 +360,7 @@ gameState.readCreatureCount();
 while (true) {
   gameState.readGameState();
   printErr(JSON.stringify(gameState));
-  for (let i = 0; i < gameState.myDroneCount; i++) {
+  for (let i = 0; i < gameState.myDrones.length; i++) {
     var drone = gameState.myDrones[i];
 
     // if we're higher than 
@@ -393,4 +393,8 @@ while (true) {
 
     console.log("WAIT 1"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
   }
+}
+
+function debug(message: string) {
+  printErr(message);
 }
