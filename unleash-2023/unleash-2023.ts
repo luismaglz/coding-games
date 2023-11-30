@@ -251,6 +251,7 @@ class Drone {
   targetPoition: { x: number; y: number } = { x: 0, y: 0 };
 
   droneActions: DroneAction[] = [
+    new GoToTop(),
     new InitialSinkAction(),
     new DoZone1Action(),
     new DoNothingAction(),
@@ -388,6 +389,20 @@ class DoNothingAction extends DroneAction {
     return true;
   }
 }
+
+
+class GoToTop extends DroneAction {
+
+  runAction(drone: Drone, gameState: GameState): boolean {
+    if (gameState.droneScans[drone.droneId].length >= 2){
+      drone.move(drone.droneX, 0, false);
+      return true;
+    }
+
+    return false;
+  }
+}
+
 
 class DoZone1Action extends DroneAction {
 
