@@ -104,6 +104,7 @@ class GameState {
   getZ1UnscannedCreatures(): number[] {
     const droneScans = this.myDrones.map((d) => d.scans).flat();
     return this.creatures
+      .filter((c) => c.type !== -1)
       .filter((c) => c.zone.id === 1)
       .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
       .filter((c) => !droneScans.includes(c.creatureId))
@@ -118,6 +119,7 @@ class GameState {
   getZ2UnscannedCreatures(): number[] {
     const droneScans = this.myDrones.map((d) => d.scans).flat();
     return this.creatures
+      .filter((c) => c.type !== -1)
       .filter((c) => c.zone.id === 2)
       .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
       .filter((c) => !droneScans.includes(c.creatureId))
@@ -132,6 +134,7 @@ class GameState {
   getZ3UnscannedCreatures(): number[] {
     const droneScans = this.myDrones.map((d) => d.scans).flat();
     return this.creatures
+      .filter((c) => c.type !== -1)
       .filter((c) => c.zone.id === 3)
       .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
       .filter((c) => !droneScans.includes(c.creatureId))
@@ -370,12 +373,12 @@ class Drone {
   }
   droneActions: DroneAction[] = [
     // new BailIfMonster(),
-    new TurnOnLightActionAt(3500, -500),
-    new TurnOnLightActionAt(6500, -500),
-    new TurnOnLightActionAt(8500, -500),
-    new TurnOnLightActionAt(8500, 500),
-    new TurnOnLightActionAt(6500, 500),
-    new TurnOnLightActionAt(3500, 500),
+    // new TurnOnLightActionAt(3500, -500),
+    // new TurnOnLightActionAt(6500, -500),
+    // new TurnOnLightActionAt(8500, -500),
+    // new TurnOnLightActionAt(8500, 500),
+    // new TurnOnLightActionAt(6500, 500),
+    // new TurnOnLightActionAt(3500, 500),
     new GoToTop(),
     new InitialSinkAction(),
     new DoZone1Action(),
