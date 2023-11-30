@@ -53,7 +53,7 @@ declare function printErr(message: string): void;
 class GameState {
   creatureCount: number;
   creatures: Creature[] = [];
-  creatureDic: {[key:string]:Creature};
+  creatureDic: { [key: string]: Creature } = {};
   myScore: number;
   foeScore: number;
   myScanCount: number;
@@ -66,16 +66,13 @@ class GameState {
   foeDroneCount: number = this.foeDrones.length;
   droneScans: { [key: number]: number[] } = {};
   visibleCreatures: VisibleCreature[];
-  visibleCreaturesDic: {[key:string]:VisibleCreature} = {};
+  visibleCreaturesDic: { [key: string]: VisibleCreature } = {};
   radarBlips: RadarBlip[];
   targetFish: number[];
   monsters: number[];
   turns: number = 0;
 
-
-  lastKnownMonsterLocations:{[key:number]:VisibleCreature} = {
-
-  }
+  lastKnownMonsterLocations: { [key: number]: VisibleCreature } = {};
 
   constructor() {}
 
@@ -209,9 +206,11 @@ class GameState {
       .filter((c) => monsters.includes(c.creatureId))
       .map((c) => c.creatureId);
 
-    this.visibleCreatures.filter(c => this.creatureDic[c.creatureId].type === -1).forEach(monster => {
-      this.lastKnownMonsterLocations[monster.creatureId] = monster;
-    })
+    this.visibleCreatures
+      .filter((c) => this.creatureDic[c.creatureId].type === -1)
+      .forEach((monster) => {
+        this.lastKnownMonsterLocations[monster.creatureId] = monster;
+      });
 
     this.turns++;
   }
@@ -401,10 +400,8 @@ class Drone {
   resetTank() {
     this.scans = [];
   }
- 
-  droneActions: DroneAction[] = [
-   
 
+  droneActions: DroneAction[] = [
     // new BailIfMonster(),
     // new TurnOnLightActionAt(3500, -500),
     // new TurnOnLightActionAt(6500, -500),
@@ -438,23 +435,24 @@ class Drone {
     if (this.initialX < 5000) {
       this.isLeft = true;
 
-      this.droneActions = [ new FlashLightEvery3Ticks(),
+      this.droneActions = [
+        new FlashLightEvery3Ticks(),
         new TurnOffLightIfLowBattery(),
         new MoveTo(500, 2500),
         new MoveTo(500, 6500),
-        new MoveTo(500, 9000),];
-
-
+        new MoveTo(500, 9000),
+      ];
     } else {
       this.isLeft = false;
 
-      this.droneActions = [ new FlashLightEvery3Ticks(),
+      this.droneActions = [
+        new FlashLightEvery3Ticks(),
         new TurnOffLightIfLowBattery(),
         new MoveTo(9500, 2500),
         new MoveTo(5000, 6500),
-        new MoveTo(9500, 9000),];
-
-    }    
+        new MoveTo(9500, 9000),
+      ];
+    }
   }
 
   wait(light: boolean, message: string = "") {
@@ -535,7 +533,11 @@ abstract class DroneAction {
     this.completed = false;
   }
 
-  abstract runAction(drone: Drone, gameState: GameState, action:DroneActionLol): boolean;
+  abstract runAction(
+    drone: Drone,
+    gameState: GameState,
+    action: DroneActionLol
+  ): boolean;
 }
 
 // class InitialSinkAction extends DroneAction {
@@ -756,8 +758,6 @@ abstract class DroneAction {
 //   }
 // }
 
-
-
 // class DoZone3Action extends DroneAction {
 //   constructor() {
 //     super();
@@ -818,61 +818,70 @@ interface FishZone {
   fishes?: Creature[];
 }
 
-class DroneActionLol{
-  light:boolean = false;
-  targetLocation: {x:number, y:number} = {x:0, y:0};
-  wait:boolean = false;
-  message:string = "";
+class DroneActionLol {
+  light: boolean = false;
+  targetLocation: { x: number; y: number } = { x: 0, y: 0 };
+  wait: boolean = false;
+  message: string = "";
 }
 
+class FlashLightEvery3Ticks extends DroneAction {
+  ticks: number = 0;
 
-
-
-
-class FlashLightEvery3Ticks extends DroneAction{
-  ticks:number = 0;
-
-  constructor(){
+  constructor() {
     super();
   }
 
-  runAction(drone: Drone, gameState: GameState, action:DroneActionLol): boolean{
-
+  runAction(
+    drone: Drone,
+    gameState: GameState,
+    action: DroneActionLol
+  ): boolean {
     this.ticks++;
 
-    if (this.ticks % 3 === 0){
+    if (this.ticks % 3 === 0) {
       action.light = true;
     }
-    
-    
+
     return false;
   }
 }
 
-class TurnOffLightIfLowBattery extends DroneAction{
-  constructor(){
+class TurnOffLightIfLowBattery extends DroneAction {
+  constructor() {
     super();
   }
 
-  runAction(drone: Drone, gameState: GameState, action:DroneActionLol): boolean{
-
-    if (drone.battery < 10){
+  runAction(
+    drone: Drone,
+    gameState: GameState,
+    action: DroneActionLol
+  ): boolean {
+    if (drone.battery < 10) {
       action.light = false;
     }
-    
-    
+
     return false;
   }
 }
 
-class MoveTo extends DroneAction{
-
-  constructor(public x:number, public y:number){
+class MoveTo extends DroneAction {
+  constructor(
+    public x: number,
+    public y: number
+  ) {
     super();
   }
 
-  runAction(drone: Drone, gameState: GameState, action: DroneActionLol): boolean {
-    if (Math.abs(drone.droneX - this.x) < 100 && Math.abs(drone.droneY - this.y) < 100){
+  runAction(
+    drone: Drone,
+    gameState: GameState,
+    action: DroneActionLol
+  ): boolean {
+    if (
+      Math.abs(drone.droneX - this.x) < 100 &&
+      Math.abs(drone.droneY - this.y) < 100
+    ) {
       this.completed = true;
       return false;
     }
@@ -881,81 +890,85 @@ class MoveTo extends DroneAction{
     action.targetLocation.y = this.y;
     return true;
   }
-
 }
 
 interface Vector {
-  startX:number;
-  endX:number;
-  startY:number;
-  endY:number;
+  startX: number;
+  endX: number;
+  startY: number;
+  endY: number;
 }
 
- // find out if any bad guy locations are going to insect with our drone's location
-    // find out if two vectors are going to intersect
-    function willDroneInterceptCreature(
-      Drone: Drone,
-      droneTarget: DroneActionLol,
-      creature: VisibleCreature
-    ){
-      const maxDroneMoveUnits = 600;
-      
-      const droneVector = {
-        startX: Drone.droneX,
-        endX: droneTarget.targetLocation.x,
-        startY: Drone.droneY,
-        endY: droneTarget.targetLocation.y,
-      };
+// find out if any bad guy locations are going to insect with our drone's location
+// find out if two vectors are going to intersect
+function willDroneInterceptCreature(
+  Drone: Drone,
+  droneTarget: DroneActionLol,
+  creature: VisibleCreature
+) {
+  const maxDroneMoveUnits = 600;
 
-      // reduce drone vector to max move units
-      const droneVectorLength = Math.sqrt(Math.pow(droneVector.endX - droneVector.startX, 2) + Math.pow(droneVector.endY - droneVector.startY, 2));
-      const droneVectorUnitX = (droneVector.endX - droneVector.startX) / droneVectorLength;
-      const droneVectorUnitY = (droneVector.endY - droneVector.startY) / droneVectorLength;
-      droneVector.endX = droneVector.startX + droneVectorUnitX * maxDroneMoveUnits;
-      droneVector.endY = droneVector.startY + droneVectorUnitY * maxDroneMoveUnits;
+  const droneVector = {
+    startX: Drone.droneX,
+    endX: droneTarget.targetLocation.x,
+    startY: Drone.droneY,
+    endY: droneTarget.targetLocation.y,
+  };
 
-      const creatureVector = {
-        startX: creature.creatureX,
-        endX: creature.creatureX + creature.creatureVx,
-        startY: creature.creatureY,
-        endY: creature.creatureY + creature.creatureVy,
-      };
+  // reduce drone vector to max move units
+  const droneVectorLength = Math.sqrt(
+    Math.pow(droneVector.endX - droneVector.startX, 2) +
+      Math.pow(droneVector.endY - droneVector.startY, 2)
+  );
+  const droneVectorUnitX =
+    (droneVector.endX - droneVector.startX) / droneVectorLength;
+  const droneVectorUnitY =
+    (droneVector.endY - droneVector.startY) / droneVectorLength;
+  droneVector.endX = droneVector.startX + droneVectorUnitX * maxDroneMoveUnits;
+  droneVector.endY = droneVector.startY + droneVectorUnitY * maxDroneMoveUnits;
 
-      const intersection = getIntersection(droneVector, creatureVector);
-      return !!intersection;
+  const creatureVector = {
+    startX: creature.creatureX,
+    endX: creature.creatureX + creature.creatureVx,
+    startY: creature.creatureY,
+    endY: creature.creatureY + creature.creatureVy,
+  };
 
-    }
+  const intersection = getIntersection(droneVector, creatureVector);
+  return !!intersection;
+}
 
-    function getIntersection(droneVector:Vector, creatureVector:Vector):{x:number, y:number} | null{
-      const x1 = droneVector.startX;
-      const y1 = droneVector.startY;
-      const x2 = droneVector.endX;
-      const y2 = droneVector.endY;
+function getIntersection(
+  droneVector: Vector,
+  creatureVector: Vector
+): { x: number; y: number } | null {
+  const x1 = droneVector.startX;
+  const y1 = droneVector.startY;
+  const x2 = droneVector.endX;
+  const y2 = droneVector.endY;
 
-      const x3 = creatureVector.startX;
-      const y3 = creatureVector.startY;
-      const x4 = creatureVector.endX;
-      const y4 = creatureVector.endY;
+  const x3 = creatureVector.startX;
+  const y3 = creatureVector.startY;
+  const x4 = creatureVector.endX;
+  const y4 = creatureVector.endY;
 
-      const denominator = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+  const denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
 
-      if (denominator === 0){
-        return null;
-      }
+  if (denominator === 0) {
+    return null;
+  }
 
-      const t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / denominator;
-      const u = -((x1-x2)*(y1-y3) - (y1-y2)*(x1-x3)) / denominator;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denominator;
+  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denominator;
 
-      if (t > 0 && t < 1 && u > 0){
-        const x = x1 + t * (x2 - x1);
-        const y = y1 + t * (y2 - y1);
-        return {x, y};
-      }
+  if (t > 0 && t < 1 && u > 0) {
+    const x = x1 + t * (x2 - x1);
+    const y = y1 + t * (y2 - y1);
+    return { x, y };
+  }
 
-      return null;
-    }
-
-
+  return null;
+}
 
 const gameState = new GameState();
 gameState.readCreatureCount();
@@ -979,30 +992,29 @@ while (true) {
 
       var response = action.runAction(drone, gameState, droneAction);
 
-      if (response) {    
+      if (response) {
         break;
       }
     }
 
-    
-    for ( const monst of Object.values(gameState.lastKnownMonsterLocations)){
-      if (willDroneInterceptCreature(drone, droneAction, monst)){
-        debug(`Drone ${drone.droneId} will intercept monster ${monst.creatureId}`);        
+    for (const monst of Object.values(gameState.lastKnownMonsterLocations)) {
+      if (willDroneInterceptCreature(drone, droneAction, monst)) {
+        debug(
+          `Drone ${drone.droneId} will intercept monster ${monst.creatureId}`
+        );
       }
     }
 
-   
-    
-
-    
-
-
-    if (droneAction.wait){
+    if (droneAction.wait) {
       drone.wait(droneAction.light, droneAction.message);
-    } else{
-      drone.move(droneAction.targetLocation.x, droneAction.targetLocation.y, droneAction.light, droneAction.message);
+    } else {
+      drone.move(
+        droneAction.targetLocation.x,
+        droneAction.targetLocation.y,
+        droneAction.light,
+        droneAction.message
+      );
     }
-
 
     // // if (returnToSurface()) {
     // //   continue;
@@ -1037,6 +1049,3 @@ while (true) {
 function debug(message: string) {
   printErr(message);
 }
-
-
-
