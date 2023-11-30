@@ -252,7 +252,7 @@ class Drone {
 
   droneActions: DroneAction[] = [
     new InitialSinkAction(),
-
+    new DoZone1Action(),
     new DoNothingAction(),
   ];
 
@@ -350,7 +350,7 @@ abstract class DroneAction {
     this.completed = false;
   }
 
-  abstract runAction(drone: Drone): boolean;
+  abstract runAction(drone: Drone, gameState: GameState): boolean;
 }
 
 class InitialSinkAction extends DroneAction {
@@ -389,6 +389,61 @@ class DoNothingAction extends DroneAction {
   }
 }
 
+class DoZone1Action extends DroneAction {
+
+  constructor() {
+    super();
+  }
+
+  runAction(drone: Drone, gameState:GameState): boolean {
+
+    debug("DoZone1Action");
+
+    var unscannedZone1Fish = gameState.creatures.filter(c=>!c.mScan);
+
+    if (unscannedZone1Fish.length === 0) {
+      this.completed = true;
+      return false;
+    }
+
+    var firstFish = unscannedZone1Fish[0];
+
+    var loc = gameState.radarBlips.find(r=>r.creatureId === firstFish.creatureId);
+
+    var radarLoc = loc?.radar;
+
+    if(radarLoc === "TL"){
+      drone.move(drone.droneX-600, drone.droneY-600, false);
+
+      return true;
+    }else if(radarLoc === "TR"){
+      drone.move(drone.droneX+600, drone.droneY, false);
+
+      return true;
+    } else if(radarLoc === "BL"){
+      drone.move(drone.droneX-600, drone.droneY + 600, false);
+
+      return true;
+    } else if(radarLoc === "BR")
+      {
+        drone.move(drone.droneX + 600, drone.droneY + 600, false);
+        
+        return true;
+      }
+
+
+    
+
+    drone.wait(false, "Waiting cause nothing else was provided");
+    return true;
+  }
+}
+
+
+
+
+
+
 class GameBoard {
   minX: number = 1;
   minY: number = 1;
@@ -421,7 +476,7 @@ while (true) {
         continue;
       }
 
-      var response = action.runAction(drone);
+      var response = action.runAction(drone, gameState);
 
       if (response) {
         break;
