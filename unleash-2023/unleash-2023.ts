@@ -68,7 +68,12 @@ class GameState {
   radarBlips: RadarBlip[];
   targetFish: number[];
   monsters: number[];
+  turns: number = 0;
   constructor() {}
+
+  shouldTurnOnLightOnTicks(): boolean {
+    return this.turns % 3 === 0;
+  }
 
   log(): void {
     // debug(`creatureCount ${JSON.stringify(this.creatureCount)}`);
@@ -193,6 +198,8 @@ class GameState {
     this.monsters = this.visibleCreatures
       .filter((c) => monsters.includes(c.creatureId))
       .map((c) => c.creatureId);
+
+    this.turns++;
   }
 
   removeClaimedFromScans() {
