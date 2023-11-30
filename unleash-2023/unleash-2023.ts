@@ -250,7 +250,18 @@ class Drone {
   initialX: number;
   targetPoition: { x: number; y: number } = { x: 0, y: 0 };
 
-  droneActions: DroneAction[] = [new InitialSinkAction()];
+  droneActions: DroneAction[] = [
+    new InitialSinkAction(),
+    
+    
+
+
+
+
+
+
+    new DoNothingAction()
+  ];
 
   constructor(
     droneId: number,
@@ -339,50 +350,6 @@ class FishTypes {
   Fish3 = 2;
 }
 
-function ifLowerThan10BatteryWaitTurnOffLight(drone: Drone): boolean {
-  debug("ifLowerThan10BatteryWaitTurnOffLight");
-
-  if (drone.battery < 10) {
-    drone.wait(false);
-    return true;
-  }
-
-  return false;
-}
-
-function ifHigherThan2500GoDownUnlessFlaggedToReturn(drone: Drone): boolean {
-  debug("ifHigherThan2500GoDownUnless");
-
-  if (drone.droneY < 2500) {
-    drone.move(drone.droneX, 10000, false);
-    return true;
-  }
-
-  return false;
-}
-
-function moveRightUntilNoFish(drone: Drone) {
-  debug("moveRightUntilNoFish");
-
-  if (drone.droneX <= 10000) {
-    drone.move(drone.droneX + 100, drone.droneY, true);
-    return true;
-  }
-
-  drone.status = "GOING UP";
-  return false;
-}
-
-function returnToSurface(force: boolean = false): boolean {
-  debug("returnToSurface");
-
-  if (force || drone.status === "GOING UP") {
-    drone.move(drone.droneX, drone.droneY - 100, false);
-    return true;
-  }
-
-  return false;
-}
 
 abstract class DroneAction {
   completed: boolean;
@@ -416,6 +383,22 @@ class InitialSinkAction extends DroneAction {
     return false;
   }
 }
+
+class DoNothingAction extends DroneAction {
+
+  constructor() {
+    super();
+  }
+
+  runAction(drone: Drone): boolean {
+    debug("DoNothingAction");
+
+    drone.wait(false, "Waiting cause nothing else was provided");
+    return true;
+  }
+}
+
+
 
 class GameBoard {
   minX: number = 1;
@@ -481,7 +464,7 @@ while (true) {
 
     // drone.move(drone.droneX, drone.droneY, false);
 
-    console.log("WAIT 1"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
+    // console.log("WAIT 1"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
   }
 }
 
