@@ -101,8 +101,8 @@ class GameState {
           break;
       }
 
-      c.meScanned = this.myScannedCreatures.includes(c.creatureId);
-      c.foeScanned = this.foeScannedCreatures.includes(c.creatureId);
+      c.mScan = this.myScannedCreatures.includes(c.creatureId);
+      c.fScan = this.foeScannedCreatures.includes(c.creatureId);
     });
   }
   readCreatureCount() {
@@ -252,15 +252,8 @@ class Drone {
 
   droneActions: DroneAction[] = [
     new InitialSinkAction(),
-    
-    
 
-
-
-
-
-
-    new DoNothingAction()
+    new DoNothingAction(),
   ];
 
   constructor(
@@ -317,8 +310,8 @@ class Creature {
   creatureId: number;
   color: number;
   type: number;
-  meScanned: boolean = false;
-  foeScanned: boolean = false;
+  mScan: boolean = false;
+  fScan: boolean = false;
   zone: FishZone;
   constructor(creatureId: number, color: number, type: number) {
     this.creatureId = creatureId;
@@ -339,9 +332,9 @@ class RadarBlip {
 }
 
 class FishZones {
-  zone1: FishZone = { Ymin: 2500, Ymax: 500 };
-  zone2: FishZone = { Ymin: 5000, Ymax: 7500 };
-  zone3: FishZone = { Ymin: 7500, Ymax: 10000 };
+  zone1: FishZone = { id: 1, Ymin: 2500, Ymax: 500 };
+  zone2: FishZone = { id: 2, Ymin: 5000, Ymax: 7500 };
+  zone3: FishZone = { id: 3, Ymin: 7500, Ymax: 10000 };
 }
 
 class FishTypes {
@@ -349,7 +342,6 @@ class FishTypes {
   Fish2 = 1;
   Fish3 = 2;
 }
-
 
 abstract class DroneAction {
   completed: boolean;
@@ -385,7 +377,6 @@ class InitialSinkAction extends DroneAction {
 }
 
 class DoNothingAction extends DroneAction {
-
   constructor() {
     super();
   }
@@ -398,8 +389,6 @@ class DoNothingAction extends DroneAction {
   }
 }
 
-
-
 class GameBoard {
   minX: number = 1;
   minY: number = 1;
@@ -408,6 +397,7 @@ class GameBoard {
 }
 
 interface FishZone {
+  id: number;
   Ymin: number;
   Ymax: number;
   fishType?: FishTypes;
@@ -420,7 +410,7 @@ gameState.readCreatureCount();
 // game loop
 while (true) {
   gameState.readGameState();
-  printErr(JSON.stringify(gameState));
+  printErr(`${JSON.stringify(gameState)}`);
   for (let i = 0; i < gameState.myDrones.length; i++) {
     var drone = gameState.myDrones[i];
 
