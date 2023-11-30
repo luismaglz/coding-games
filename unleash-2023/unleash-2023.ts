@@ -891,70 +891,6 @@ interface Vector {
   endY:number;
 }
 
- // find out if any bad guy locations are going to insect with our drone's location
-    // find out if two vectors are going to intersect
-    function willDroneInterceptCreature(
-      Drone: Drone,
-      droneTarget: DroneActionLol,
-      creature: VisibleCreature
-    ){
-      const maxDroneMoveUnits = 600;
-      
-      const droneVector = {
-        startX: Drone.droneX,
-        endX: droneTarget.targetLocation.x,
-        startY: Drone.droneY,
-        endY: droneTarget.targetLocation.y,
-      };
-
-      // reduce drone vector to max move units
-      const droneVectorLength = Math.sqrt(Math.pow(droneVector.endX - droneVector.startX, 2) + Math.pow(droneVector.endY - droneVector.startY, 2));
-      const droneVectorUnitX = (droneVector.endX - droneVector.startX) / droneVectorLength;
-      const droneVectorUnitY = (droneVector.endY - droneVector.startY) / droneVectorLength;
-      droneVector.endX = droneVector.startX + droneVectorUnitX * maxDroneMoveUnits;
-      droneVector.endY = droneVector.startY + droneVectorUnitY * maxDroneMoveUnits;
-
-      const creatureVector = {
-        startX: creature.creatureX,
-        endX: creature.creatureX + creature.creatureVx,
-        startY: creature.creatureY,
-        endY: creature.creatureY + creature.creatureVy,
-      };
-
-      const intersection = getIntersection(droneVector, creatureVector);
-      return !!intersection;
-
-    }
-
-    function getIntersection(droneVector:Vector, creatureVector:Vector):{x:number, y:number} | null{
-      const x1 = droneVector.startX;
-      const y1 = droneVector.startY;
-      const x2 = droneVector.endX;
-      const y2 = droneVector.endY;
-
-      const x3 = creatureVector.startX;
-      const y3 = creatureVector.startY;
-      const x4 = creatureVector.endX;
-      const y4 = creatureVector.endY;
-
-      const denominator = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
-
-      if (denominator === 0){
-        return null;
-      }
-
-      const t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / denominator;
-      const u = -((x1-x2)*(y1-y3) - (y1-y2)*(x1-x3)) / denominator;
-
-      if (t > 0 && t < 1 && u > 0){
-        const x = x1 + t * (x2 - x1);
-        const y = y1 + t * (y2 - y1);
-        return {x, y};
-      }
-
-      return null;
-    }
-
 
 
 const gameState = new GameState();
@@ -985,22 +921,55 @@ while (true) {
     }
 
     
-    for ( const monst of Object.values(gameState.lastKnownMonsterLocations)){
-      if (willDroneInterceptCreature(drone, droneAction, monst)){
-        debug(`Drone ${drone.droneId} will intercept monster ${monst.creatureId}`);        
-      }
-    }
+    
 
    
     
 
+    // get angle 
+    var startx = drone.droneX;
+    var endx = droneAction.targetLocation.x;
+    var starty = drone.droneY;
+    var endy = droneAction.targetLocation.y;
+
+    var angle = Math.atan2(endy - starty, endx - startx) * 180 / Math.PI;
+
+    debug(`Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${droneAction.targetLocation.x}, ${droneAction.targetLocation.y} at angle ${angle}`);
+
+    var distance = 600;
     
+    var distX = startx + distance * Math.cos(angle * Math.PI / 180);
+    var distY = starty + distance * Math.sin(angle * Math.PI / 180);
+
+    debug(`Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${distX}, ${distY} at angle ${angle}`);
+
+
+    
+    for ( const monst of Object.values(gameState.lastKnownMonsterLocations)){
+      
+      // if monster is within 1000 units of our drone
+      if (Math.abs(monst.creatureX - drone.droneX) < 1000 && Math.abs(monst.creatureY - drone.droneY) < 1000){
+        debug(`Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${monst.creatureX}, ${monst.creatureY} at angle ${angle}`);        
+        
+        // if monster is coming our direction
+        if (drone.droneX < monst.creatureX && monst.creatureVx < 0 || 
+            // drone.droneY < monst.creatureY && monst.creatureVy < 0 ||
+            drone.droneX > monst.creatureX && monst.creatureVx > 0
+            // drone.droneY > monst.creatureY && monst.creatureVy > 0
+            ){
+              
+              distX += monst.creatureVx;
+              distY += monst.creatureVy;                    
+          }        
+      }
+    }
+
 
 
     if (droneAction.wait){
       drone.wait(droneAction.light, droneAction.message);
     } else{
-      drone.move(droneAction.targetLocation.x, droneAction.targetLocation.y, droneAction.light, droneAction.message);
+      drone.move(distX, distY, droneAction.light, droneAction.message);
     }
 
 
