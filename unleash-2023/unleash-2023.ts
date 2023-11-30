@@ -357,6 +357,7 @@ class Drone {
     new DoZone1Action(),
     new DoZone2Action(),
     new DoZone3Action(),
+    new GoToTop(true),
     new DoNothingAction(),
   ];
 
@@ -374,9 +375,9 @@ class Drone {
     this.battery = battery;
 
     this.initialX = droneX;
-    if (this.initialX < 5000){
-      this.isLeft= true;
-    }else{
+    if (this.initialX < 5000) {
+      this.isLeft = true;
+    } else {
       this.isLeft = false;
     }
   }
@@ -501,13 +502,28 @@ class DoNothingAction extends DroneAction {
 
 class GoToTop extends DroneAction {
   runAction(drone: Drone, gameState: GameState): boolean {
-    debug("GoToTops");
-    if (drone.scans.length >= 4) {
+    debug(`GoToTops force: ${this.force}`);
+    if (this.force) {
+      drone.move(drone.droneX, 0, false);
+      return true;
+    }
+    if (drone.scans.length >= 3) {
       drone.move(drone.droneX, 0, false);
       return true;
     }
 
     return false;
+  }
+  constructor(private force: boolean = false) {
+    super();
+  }
+}
+
+class GoToTopForce extends DroneAction {
+  runAction(drone: Drone, gameState: GameState): boolean {
+    debug("GoToTops");
+    drone.move(drone.droneX, 0, false);
+    return true;
   }
 }
 
@@ -541,10 +557,9 @@ class TurnOnLightActionAt extends DroneAction {
       this.completed = true;
       return true;
     }
-    
+
     // move each drone to the center of it's lane.
-    drone.move(
-      drone.isLeft ? 2500 : 6500, this.y, false, "moving to light on");
+    drone.move(drone.isLeft ? 2500 : 6500, this.y, false, "moving to light on");
     return true;
   }
 }
@@ -705,7 +720,7 @@ gameState.readCreatureCount();
 // game loop
 while (true) {
   gameState.readGameState();
-  gameState.log();
+  // gameState.log();
   for (let i = 0; i < gameState.myDrones.length; i++) {
     var drone = gameState.myDrones[i];
 
