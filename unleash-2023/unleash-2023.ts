@@ -1134,8 +1134,8 @@ while (true) {
     for (const monst of Object.values(gameState.lastKnownMonsterLocations)) {
       // if monster is within 1000 units of our drone
       if (
-        Math.abs(monst.creatureX - drone.droneX) < 700 &&
-        Math.abs(monst.creatureY - drone.droneY) < 700
+        Math.abs(monst.creatureX - drone.droneX) < 1000 &&
+        Math.abs(monst.creatureY - drone.droneY) < 1000
       ) {
         debug(
           `fish in our range! ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${monst.creatureX}, ${monst.creatureY} at angle ${angle}`
