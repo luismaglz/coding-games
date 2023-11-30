@@ -41,6 +41,11 @@
 // BR: the creature is to the bottom-right of the drone.
 // BL: the creature is to the bottom-left of the drone.
 
+// surface is y 0
+// bottom is y 10000
+// left is x 0
+// right is x 10000
+
 declare function readline(): string;
 declare function print(value: string): void;
 declare function printErr(message: string): void;
@@ -300,6 +305,8 @@ class FishZones {
 }
 
 function ifLowerThan10BatteryWaitTurnOffLight(drone: Drone): boolean {
+  debug("ifLowerThan10BatteryWaitTurnOffLight");
+
   if (drone.battery < 10) {
     drone.wait(false);
     return true;
@@ -309,6 +316,8 @@ function ifLowerThan10BatteryWaitTurnOffLight(drone: Drone): boolean {
 }
 
 function ifHigherThan2500GoDownUnlessFlaggedToReturn(drone: Drone): boolean {
+  debug("ifHigherThan2500GoDownUnless");
+
   if (drone.droneY < 2500) {
     drone.move(drone.droneX, 10000, false);
     return true;
@@ -318,6 +327,8 @@ function ifHigherThan2500GoDownUnlessFlaggedToReturn(drone: Drone): boolean {
 }
 
 function moveRightUntilNoFish(drone: Drone) {
+  debug("moveRightUntilNoFish");
+
   if (drone.droneX <= 10000) {
     drone.move(drone.droneX + 100, drone.droneY, true);
     return true;
@@ -328,6 +339,8 @@ function moveRightUntilNoFish(drone: Drone) {
 }
 
 function returnToSurface(force: boolean = false): boolean {
+  debug("returnToSurface");
+
   if (force || drone.status === "GOING UP") {
     drone.move(drone.droneX, drone.droneY - 100, false);
     return true;
