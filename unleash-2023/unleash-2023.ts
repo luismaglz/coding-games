@@ -292,6 +292,55 @@ class FishZones {
   zone3: FishZone = { Ymin: 7500, Ymax: 10000 };
 }
 
+function ifLowerThan10BatteryWaitTurnOffLight(drone: Drone) : boolean {
+  if (drone.battery < 10) {
+    drone.wait(false);
+    return true;
+  }
+
+  return false;
+}
+
+function ifHigherThan2500GoDownUnlessFlaggedToReturn(drone: Drone) : boolean {
+  
+  if (drone.droneY > 2500 && drone.status !== "GOING UP") {
+    drone.move(drone.droneX, 2500, false);
+    return true;
+  }
+
+  return false;
+}
+
+function moveRightUntilNoFish(drone:Drone) {
+
+  if (drone.droneX <= 10000) {
+    drone.move(drone.droneX + 100, drone.droneY, true);    
+    return true;
+  }
+  
+    drone.status = "GOING UP";
+    return false;  
+}
+
+function returnToSurface(force:boolean = false):boolean{
+
+  if (force || drone.status === "GOING UP"){
+    drone.move(drone.droneX, drone.droneY-100, false);
+    return true;
+  }  
+
+  return false;
+}
+
+
+// const rules:()=>boolean[] = [
+//   ifLowerThan10BatteryWaitTurnOffLight
+// ];
+
+
+
+// gamne loop for codingame
+
 class GameBoard {
   minX: number = 1;
   minY: number = 1;
@@ -314,7 +363,30 @@ while (true) {
   for (let i = 0; i < gameState.myDroneCount; i++) {
     var drone = gameState.myDrones[i];
 
-    // if we're higher than
+    // if we're higher than 
+
+    if (returnToSurface()){
+      continue;
+    }
+
+    if (ifLowerThan10BatteryWaitTurnOffLight(drone)){
+      continue;
+    }
+
+    if (ifHigherThan2500GoDownUnlessFlaggedToReturn(drone)){
+      continue;
+    }
+
+    if (moveRightUntilNoFish(drone)){
+      continue;
+    }
+
+
+    
+    // fallback
+    if (returnToSurface(true)){
+      continue;
+    }
 
     // Write an action using console.log()
     // To debug: console.error('Debug messages...');
