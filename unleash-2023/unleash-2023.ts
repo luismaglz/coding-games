@@ -68,7 +68,12 @@ class GameState {
   radarBlips: RadarBlip[];
   targetFish: number[];
   monsters: number[];
+  turns: number = 0;
   constructor() {}
+
+  shouldTurnOnLightOnTicks(): boolean {
+    return this.turns % 3 === 0;
+  }
 
   log(): void {
     // debug(`creatureCount ${JSON.stringify(this.creatureCount)}`);
@@ -104,6 +109,7 @@ class GameState {
   getZ1UnscannedCreatures(): number[] {
     const droneScans = this.myDrones.map((d) => d.scans).flat();
     return this.creatures
+      .filter((c) => c.type !== -1)
       .filter((c) => c.zone.id === 1)
       .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
       .filter((c) => !droneScans.includes(c.creatureId))
@@ -118,6 +124,7 @@ class GameState {
   getZ2UnscannedCreatures(): number[] {
     const droneScans = this.myDrones.map((d) => d.scans).flat();
     return this.creatures
+      .filter((c) => c.type !== -1)
       .filter((c) => c.zone.id === 2)
       .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
       .filter((c) => !droneScans.includes(c.creatureId))
@@ -132,6 +139,7 @@ class GameState {
   getZ3UnscannedCreatures(): number[] {
     const droneScans = this.myDrones.map((d) => d.scans).flat();
     return this.creatures
+      .filter((c) => c.type !== -1)
       .filter((c) => c.zone.id === 3)
       .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
       .filter((c) => !droneScans.includes(c.creatureId))
@@ -190,6 +198,8 @@ class GameState {
     this.monsters = this.visibleCreatures
       .filter((c) => monsters.includes(c.creatureId))
       .map((c) => c.creatureId);
+
+    this.turns++;
   }
 
   removeClaimedFromScans() {
@@ -370,12 +380,12 @@ class Drone {
   }
   droneActions: DroneAction[] = [
     // new BailIfMonster(),
-    new TurnOnLightActionAt(3500, -500),
-    new TurnOnLightActionAt(6500, -500),
-    new TurnOnLightActionAt(8500, -500),
-    new TurnOnLightActionAt(8500, 500),
-    new TurnOnLightActionAt(6500, 500),
-    new TurnOnLightActionAt(3500, 500),
+    // new TurnOnLightActionAt(3500, -500),
+    // new TurnOnLightActionAt(6500, -500),
+    // new TurnOnLightActionAt(8500, -500),
+    // new TurnOnLightActionAt(8500, 500),
+    // new TurnOnLightActionAt(6500, 500),
+    // new TurnOnLightActionAt(3500, 500),
     new GoToTop(),
     new InitialSinkAction(),
     new DoZone1Action(),
