@@ -177,7 +177,9 @@ class GameState {
       const droneId: number = parseInt(inputs[0]);
       const creatureId: number = parseInt(inputs[1]);
       if (!this.droneScans[droneId]) this.droneScans[droneId] = [];
-      this.droneScans[droneId].push(creatureId);
+      if (!this.droneScans[droneId].includes(creatureId)) {
+        this.droneScans[droneId].push(creatureId);
+      }
     }
   }
 
@@ -307,7 +309,7 @@ function ifLowerThan10BatteryWaitTurnOffLight(drone: Drone): boolean {
 }
 
 function ifHigherThan2500GoDownUnlessFlaggedToReturn(drone: Drone): boolean {
-  if (drone.droneY < 2500 ) {
+  if (drone.droneY < 2500) {
     drone.move(drone.droneX, 10000, false);
     return true;
   }
