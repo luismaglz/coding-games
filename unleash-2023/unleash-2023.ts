@@ -1138,7 +1138,7 @@ while (true) {
         Math.abs(monst.creatureY - drone.droneY) < 700
       ) {
         debug(
-          `Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${monst.creatureX}, ${monst.creatureY} at angle ${angle}`
+          `fish in our range! ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${monst.creatureX}, ${monst.creatureY} at angle ${angle}`
         );
 
         // if monster is coming our direction
@@ -1148,8 +1148,11 @@ while (true) {
           (drone.droneX > monst.creatureX && monst.creatureVx > 0) ||
           (drone.droneY > monst.creatureY && monst.creatureVy > 0)
         ) {
+
+          
           distX += monst.creatureVx;
           distY += monst.creatureVy;
+          debug(`Diverting x: ${distX} y: ${distY}`);
         }
       }
     }
