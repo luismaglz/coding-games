@@ -1144,9 +1144,9 @@ while (true) {
         // if monster is coming our direction
         if (
           (drone.droneX < monst.creatureX && monst.creatureVx < 0) ||
-          // drone.droneY < monst.creatureY && monst.creatureVy < 0 ||
-          (drone.droneX > monst.creatureX && monst.creatureVx > 0)
-          // drone.droneY > monst.creatureY && monst.creatureVy > 0
+          (drone.droneY < monst.creatureY && monst.creatureVy < 0) ||
+          (drone.droneX > monst.creatureX && monst.creatureVx > 0) ||
+          (drone.droneY > monst.creatureY && monst.creatureVy > 0)
         ) {
           distX += monst.creatureVx;
           distY += monst.creatureVy;
