@@ -262,36 +262,35 @@ class RadarBlip {
   }
 }
 
-// gamne loop for codingame
+class FishZones {
+  zone1: FishZone = { Ymin: 2500, Ymax: 500 };
+  zone2: FishZone = { Ymin: 5000, Ymax: 7500 };
+  zone3: FishZone = { Ymin: 7500, Ymax: 10000 };
+}
 
-// game loop
+class GameBoard {
+  minX: number = 1;
+  minY: number = 1;
+  maxX: number = 9999;
+  maxY: number = 9999;
+}
 
-/**
- * Score points by scanning valuable fish faster than your opponent.
- **/
-
-// const creatureCount: number = parseInt(readline());
-// for (let i = 0; i < creatureCount; i++) {
-//   var inputs: string[] = readline().split(" ");
-//   const creatureId: number = parseInt(inputs[0]);
-//   const color: number = parseInt(inputs[1]);
-//   const type: number = parseInt(inputs[2]);
-// }
+interface FishZone {
+  Ymin: number;
+  Ymax: number;
+}
 
 const gameState = new GameState();
 gameState.readCreatureCount();
 
 // game loop
-while (true) {  
+while (true) {
   gameState.readGameState();
   printErr(JSON.stringify(gameState));
   for (let i = 0; i < gameState.myDroneCount; i++) {
-
     var drone = gameState.myDrones[i];
 
-    // if we're higher than 
-
-
+    // if we're higher than
 
     // Write an action using console.log()
     // To debug: console.error('Debug messages...');
