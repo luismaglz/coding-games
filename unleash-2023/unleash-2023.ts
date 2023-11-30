@@ -350,6 +350,8 @@ class Drone {
     new TurnOnLightActionAt(3500),
     new TurnOnLightActionAt(6500),
     new TurnOnLightActionAt(8500),
+    new TurnOnLightActionAt(6500),
+    new TurnOnLightActionAt(3500),
     new GoToTop(),
     new InitialSinkAction(),
     new DoZone1Action(),
