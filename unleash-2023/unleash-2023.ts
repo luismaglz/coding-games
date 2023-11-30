@@ -66,6 +66,7 @@ class GameState {
   droneScans: { [key: number]: number[] } = {};
   visibleCreatures: VisibleCreature[];
   radarBlips: RadarBlip[];
+  targetFish: number[];
   constructor() {}
 
   log(): void {
