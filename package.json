@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/luismaglz/coding-games#readme",
   "dependencies": {
-    "typescript": "^3.7.5"
+    "typescript": "^3.7.5",
+    "prettier": "3.1.0"
   }
 }
