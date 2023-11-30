@@ -439,10 +439,10 @@ class Drone {
         new FlashLightEvery3Ticks(),
         new TurnOffLightIfLowBattery(),
         // new MoveTo(5000, 9000),
-        new GoToTop(),
-        new DoZone1Action(),
-        new DoZone2Action(),
+        new GoToTop(false, 3),
         new DoZone3Action(),
+        new DoZone2Action(),
+        new DoZone1Action(),
         new GoToTop(true),
       ];
     } else {
@@ -452,7 +452,7 @@ class Drone {
         new FlashLightEvery3Ticks(),
         new TurnOffLightIfLowBattery(),
         // new MoveTo(5000, 9000),
-        new GoToTop(),
+        new GoToTop(false, 4),
         new DoZone1Action(),
         new DoZone2Action(),
         new DoZone3Action(),
@@ -595,7 +595,7 @@ class GoToTop extends DroneAction {
       droneAction.targetLocation.y = 0;
       return true;
     }
-    if (drone.scans.length >= 2) {
+    if (drone.scans.length >= this.max) {
       droneAction.targetLocation.x = drone.droneX;
       droneAction.targetLocation.y = 0;
       return true;
@@ -603,7 +603,10 @@ class GoToTop extends DroneAction {
 
     return false;
   }
-  constructor(private force: boolean = false) {
+  constructor(
+    private force: boolean = false,
+    private max = 2
+  ) {
     super();
   }
 }
