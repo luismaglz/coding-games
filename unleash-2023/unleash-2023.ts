@@ -56,8 +56,8 @@ class GameState {
   foeScannedCreatures: number[];
   myDroneCount: number;
   foeDroneCount: number;
-  myDrones: Drone[];
-  foeDrones: Drone[];
+  myDrones: Drone[] = [];
+  foeDrones: Drone[] = [];
   droneScans: { [key: number]: number[] };
   visibleCreatures: VisibleCreature[];
   radarBlips: RadarBlip[];
@@ -67,8 +67,8 @@ class GameState {
     // this.readCreatureCount();
     this.myScannedCreatures = [];
     this.foeScannedCreatures = [];
-    this.myDrones = [];
-    this.foeDrones = [];
+    // this.myDrones = [];
+    // this.foeDrones = [];
     this.visibleCreatures = [];
     this.radarBlips = [];
 
@@ -126,9 +126,20 @@ class GameState {
       const droneY: number = parseInt(inputs[2]);
       const emergency: number = parseInt(inputs[3]);
       const battery: number = parseInt(inputs[4]);
-      this.myDrones.push(
-        new Drone(droneId, droneX, droneY, emergency, battery)
-      );
+      // add new drones
+      if (this.myDrones.length < myDroneCount) {
+        this.myDrones.push(
+          new Drone(droneId, droneX, droneY, emergency, battery)
+        );
+      } else {
+        // update existing drones
+        const d = this.myDrones.find((d) => d.droneId === droneId);
+        if (!d) throw new Error("Drone not found");
+        d.droneX = droneX;
+        d.droneY = droneY;
+        d.emergency = emergency;
+        d.battery = battery;
+      }
     }
   }
 
@@ -141,9 +152,21 @@ class GameState {
       const droneY: number = parseInt(inputs[2]);
       const emergency: number = parseInt(inputs[3]);
       const battery: number = parseInt(inputs[4]);
-      this.foeDrones.push(
-        new Drone(droneId, droneX, droneY, emergency, battery)
-      );
+
+      // add new drones
+      if (this.foeDrones.length < foeDroneCount) {
+        this.foeDrones.push(
+          new Drone(droneId, droneX, droneY, emergency, battery)
+        );
+      } else {
+        // update existing drones
+        const d = this.foeDrones.find((d) => d.droneId === droneId);
+        if (!d) throw new Error("Drone not found");
+        d.droneX = droneX;
+        d.droneY = droneY;
+        d.emergency = emergency;
+        d.battery = battery;
+      }
     }
   }
 
@@ -196,6 +219,7 @@ class Drone {
   droneY: number;
   emergency: number;
   battery: number;
+  status: "GOING UP" | "SCANNING";
   constructor(
     droneId: number,
     droneX: number,
