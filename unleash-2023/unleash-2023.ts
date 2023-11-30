@@ -228,6 +228,15 @@ class Drone {
   emergency: number;
   battery: number;
   status: "GOING UP" | "SCANNING" = "SCANNING";
+
+  initialX: number;
+  targetPoition: { x: number; y: number } = { x: 0, y: 0 };
+
+  droneActions:DroneAction[] = [
+    new InitialSinkAction()
+  ]
+
+
   constructor(
     droneId: number,
     droneX: number,
@@ -240,6 +249,8 @@ class Drone {
     this.droneY = droneY;
     this.emergency = emergency;
     this.battery = battery;
+
+    this.initialX = droneX;
   }
 
   wait(light: boolean, message: string = "") {
@@ -349,11 +360,48 @@ function returnToSurface(force: boolean = false): boolean {
   return false;
 }
 
-// const rules:()=>boolean[] = [
-//   ifLowerThan10BatteryWaitTurnOffLight
-// ];
+  abstract class DroneAction {
+    completed: boolean;
 
-// gamne loop for codingame
+    constructor() {
+      this.completed = false;
+    }
+
+    abstract runAction(drone: Drone): boolean;
+  }
+
+  class InitialSinkAction extends DroneAction {
+    constructor() {
+      super();
+    }
+
+    runAction(drone: Drone): boolean {
+      debug("InitialSinkAction");
+
+
+      if (drone.droneY >= 2500) {
+        this.completed = true;
+        // action complete. do not stop processing other actions
+        return false;
+      }
+
+      if (drone.droneY < 2500) {
+        drone.move(drone.droneX, 10000, false);
+        return true;
+      }
+
+      return false;
+    }
+  }
+
+  
+
+
+
+
+
+
+
 
 class GameBoard {
   minX: number = 1;
@@ -379,29 +427,49 @@ while (true) {
 
     // if we're higher than
 
-    if (returnToSurface()) {
-      continue;
+    
+    for(const action of drone.droneActions){
+      if(action.completed){
+        continue;
+      }
+
+      var response = action.runAction(drone);
+
+      if(response){
+        break;
+      }
+
     }
 
-    if (ifLowerThan10BatteryWaitTurnOffLight(drone)) {
-      continue;
-    }
 
-    if (ifHigherThan2500GoDownUnlessFlaggedToReturn(drone)) {
-      continue;
-    }
 
-    if (moveRightUntilNoFish(drone)) {
-      continue;
-    }
 
-    // fallback
-    if (returnToSurface(true)) {
-      continue;
-    }
+    // // if (returnToSurface()) {
+    // //   continue;
+    // // }
 
-    // Write an action using console.log()
-    // To debug: console.error('Debug messages...');
+    // // if (ifLowerThan10BatteryWaitTurnOffLight(drone)) {
+    // //   continue;
+    // // }
+
+    // // if (ifHigherThan2500GoDownUnlessFlaggedToReturn(drone)) {
+    // //   continue;
+    // // }
+
+    // // if (moveRightUntilNoFish(drone)) {
+    // //   continue;
+    // // }
+
+    // // // fallback
+    // // if (returnToSurface(true)) {
+    // //   continue;
+    // // }
+
+    // // Write an action using console.log()
+    // // To debug: console.error('Debug messages...');
+
+    // drone.move(drone.droneX, drone.droneY, false);
+
 
     console.log("WAIT 1"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
   }
