@@ -322,3 +322,7 @@ while (true) {
     console.log("WAIT 1"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
   }
 }
+
+function debug(message: string) {
+  printErr(message);
+}
