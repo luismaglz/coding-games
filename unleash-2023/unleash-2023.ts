@@ -268,8 +268,12 @@ class Drone {
   initialX: number;
   targetPoition: { x: number; y: number } = { x: 0, y: 0 };
 
-  droneActions: DroneAction[] = [
-    new GoToTop(),
+  droneActions: DroneAction[] = [    
+    new TurnOnLightActionAt(3500),
+    new TurnOnLightActionAt(6500),
+    new TurnOnLightActionAt(8500),
+
+    new GoToTop(),    
     new InitialSinkAction(),
     new DoZone1Action(),
     new DoNothingAction(),
@@ -423,6 +427,44 @@ class GoToTop extends DroneAction {
 
     return false;
   }
+}
+
+class TurnOnLightAction extends DroneAction{
+  constructor() {
+    super();
+  }
+
+  runAction(drone: Drone, gameState: GameState): boolean {
+    debug("TurnOnLightAction");
+
+    if (drone.battery < 10){
+      drone.wait(true, "Waiting cause battery is low");
+      return true;
+    }
+
+    return false;
+  }
+}
+
+class TurnOnLightActionAt extends DroneAction{
+
+  constructor(public y:number){ 
+    super();
+   }
+
+
+  runAction(drone: Drone, gameState: GameState): boolean {
+    
+    if ((drone.droneY - this.y) < 100){
+      drone.wait(true, "Hit marker, light on baby");
+      this.completed = true;
+      return true;
+    }
+    
+    drone.move(drone.droneX, this.y, true);
+    return true;
+  }
+
 }
 
 
