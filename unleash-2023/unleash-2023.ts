@@ -68,6 +68,24 @@ class GameState {
   radarBlips: RadarBlip[];
   constructor() {}
 
+  log(): void {
+    debug(`creatureCount ${JSON.stringify(this.creatureCount)}`);
+    debug(`creatures ${JSON.stringify(this.creatures)}`);
+    debug(`myScore ${JSON.stringify(this.myScore)}`);
+    debug(`foeScore ${JSON.stringify(this.foeScore)}`);
+    debug(`myScanCount ${JSON.stringify(this.myScanCount)}`);
+    debug(`myScannedCreatures ${JSON.stringify(this.myScannedCreatures)}`);
+    debug(`foeScabCount ${JSON.stringify(this.foeScabCount)}`);
+    debug(`foeScannedCreatures ${JSON.stringify(this.foeScannedCreatures)}`);
+    debug(`myDrones ${JSON.stringify(this.myDrones)}`);
+    debug(`myDroneCount ${JSON.stringify(this.myDroneCount)}`);
+    debug(`foeDrones ${JSON.stringify(this.foeDrones)}`);
+    debug(`foeDroneCount ${JSON.stringify(this.foeDroneCount)}`);
+    debug(`droneScans ${JSON.stringify(this.droneScans)}`);
+    debug(`visibleCreatures ${JSON.stringify(this.visibleCreatures)}`);
+    debug(`radarBlips ${JSON.stringify(this.radarBlips)}`);
+  }
+
   readGameState() {
     // this.readCreatureCount();
     this.myScannedCreatures = [];
@@ -312,6 +330,7 @@ class Creature {
   color: number;
   type: number;
   mScan: boolean = false;
+  mClaimed: boolean = false;
   fScan: boolean = false;
   zone: FishZone;
   constructor(creatureId: number, color: number, type: number) {
@@ -405,16 +424,17 @@ class GoToTop extends DroneAction {
 
 
 class DoZone1Action extends DroneAction {
-
   constructor() {
     super();
   }
 
-  runAction(drone: Drone, gameState:GameState): boolean {
-
+  runAction(drone: Drone, gameState: GameState): boolean {
     debug("DoZone1Action");
 
-    var unscannedZone1Fish = gameState.creatures.filter(c=>!c.mScan);
+    const droneScannedCreatures = gameState.droneScans[drone.droneId];
+    var unscannedZone1Fish = gameState.creatures.filter(
+      (creature) => !droneScannedCreatures.includes(creature.creatureId)
+    );
 
     if (unscannedZone1Fish.length === 0) {
       this.completed = true;
@@ -423,41 +443,34 @@ class DoZone1Action extends DroneAction {
 
     var firstFish = unscannedZone1Fish[0];
 
-    var loc = gameState.radarBlips.find(r=>r.creatureId === firstFish.creatureId);
+    var loc = gameState.radarBlips.find(
+      (r) => r.creatureId === firstFish.creatureId
+    );
 
     var radarLoc = loc?.radar;
 
-    if(radarLoc === "TL"){
-      drone.move(drone.droneX-600, drone.droneY-600, false);
+    if (radarLoc === "TL") {
+      drone.move(drone.droneX - 600, drone.droneY - 600, false);
 
       return true;
-    }else if(radarLoc === "TR"){
-      drone.move(drone.droneX+600, drone.droneY, false);
+    } else if (radarLoc === "TR") {
+      drone.move(drone.droneX + 600, drone.droneY, false);
 
       return true;
-    } else if(radarLoc === "BL"){
-      drone.move(drone.droneX-600, drone.droneY + 600, false);
+    } else if (radarLoc === "BL") {
+      drone.move(drone.droneX - 600, drone.droneY + 600, false);
 
       return true;
-    } else if(radarLoc === "BR")
-      {
-        drone.move(drone.droneX + 600, drone.droneY + 600, false);
-        
-        return true;
-      }
+    } else if (radarLoc === "BR") {
+      drone.move(drone.droneX + 600, drone.droneY + 600, false);
 
-
-    
+      return true;
+    }
 
     drone.wait(false, "Waiting cause nothing else was provided");
     return true;
   }
 }
-
-
-
-
-
 
 class GameBoard {
   minX: number = 1;
@@ -480,7 +493,7 @@ gameState.readCreatureCount();
 // game loop
 while (true) {
   gameState.readGameState();
-  printErr(`${JSON.stringify(gameState)}`);
+  // gameState.log();
   for (let i = 0; i < gameState.myDrones.length; i++) {
     var drone = gameState.myDrones[i];
 
