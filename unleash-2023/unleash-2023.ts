@@ -59,8 +59,22 @@ class GameState {
   myDrones: Drone[];
   foeDrones: Drone[];
   droneScans: { [key: number]: number[] };
+  visibleCreatures: VisibleCreature[];
+  radarBlips: RadarBlip[];
   constructor() {}
 
+  readGameState() {
+    this.readCreatureCount();
+    this.readMyScore();
+    this.readFoeScore();
+    this.readMyScanCount();
+    this.readFoeScanCount();
+    this.readMyDrones();
+    this.readFoeDrones();
+    this.readDroneScans();
+    this.readVisibleCreatures();
+    this.readRadarBlips();
+  }
   readCreatureCount() {
     const creatureCount: number = parseInt(readline());
     for (let i = 0; i < creatureCount; i++) {
@@ -135,6 +149,38 @@ class GameState {
       this.droneScans[droneId].push(creatureId);
     }
   }
+
+  readVisibleCreatures() {
+    const visibleCreatureCount: number = parseInt(readline());
+    for (let i = 0; i < visibleCreatureCount; i++) {
+      var inputs: string[] = readline().split(" ");
+      const creatureId: number = parseInt(inputs[0]);
+      const creatureX: number = parseInt(inputs[1]);
+      const creatureY: number = parseInt(inputs[2]);
+      const creatureVx: number = parseInt(inputs[3]);
+      const creatureVy: number = parseInt(inputs[4]);
+      this.visibleCreatures.push(
+        new VisibleCreature(
+          creatureId,
+          creatureX,
+          creatureY,
+          creatureVx,
+          creatureVy
+        )
+      );
+    }
+  }
+
+  readRadarBlips() {
+    const radarBlipCount: number = parseInt(readline());
+    for (let i = 0; i < radarBlipCount; i++) {
+      var inputs: string[] = readline().split(" ");
+      const droneId: number = parseInt(inputs[0]);
+      const creatureId: number = parseInt(inputs[1]);
+      const radar: string = inputs[2];
+      this.radarBlips.push(new RadarBlip(droneId, creatureId, radar));
+    }
+  }
 }
 
 class Drone {
@@ -156,6 +202,35 @@ class Drone {
     this.emergency = emergency;
     this.battery = battery;
   }
+
+  wait(light: boolean) {
+    console.log(`WAIT ${light ? 1 : 0}`);
+  }
+
+  move(x: number, y: number, light: boolean) {
+    console.log(`MOVE ${x} ${y} ${light ? 1 : 0}`);
+  }
+}
+
+class VisibleCreature {
+  creatureId: number;
+  creatureX: number;
+  creatureY: number;
+  creatureVx: number;
+  creatureVy: number;
+  constructor(
+    creatureId: number,
+    creatureX: number,
+    creatureY: number,
+    creatureVx: number,
+    creatureVy: number
+  ) {
+    this.creatureId = creatureId;
+    this.creatureX = creatureX;
+    this.creatureY = creatureY;
+    this.creatureVx = creatureVx;
+    this.creatureVy = creatureVy;
+  }
 }
 
 class Creature {
@@ -169,6 +244,17 @@ class Creature {
   }
 }
 
+class RadarBlip {
+  droneId: number;
+  creatureId: number;
+  radar: string;
+  constructor(droneId: number, creatureId: number, radar: string) {
+    this.droneId = droneId;
+    this.creatureId = creatureId;
+    this.radar = radar;
+  }
+}
+
 // gamne loop for codingame
 
 // game loop
@@ -177,15 +263,13 @@ class Creature {
  * Score points by scanning valuable fish faster than your opponent.
  **/
 
-// const gameState
-
-// const creatureCount: number = parseInt(readline());
-// for (let i = 0; i < creatureCount; i++) {
-//   var inputs: string[] = readline().split(" ");
-//   const creatureId: number = parseInt(inputs[0]);
-//   const color: number = parseInt(inputs[1]);
-//   const type: number = parseInt(inputs[2]);
-// }
+const creatureCount: number = parseInt(readline());
+for (let i = 0; i < creatureCount; i++) {
+  var inputs: string[] = readline().split(" ");
+  const creatureId: number = parseInt(inputs[0]);
+  const color: number = parseInt(inputs[1]);
+  const type: number = parseInt(inputs[2]);
+}
 
 // game loop
 while (true) {
