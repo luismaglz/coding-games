@@ -86,6 +86,24 @@ class GameState {
     this.readDroneScans();
     this.readVisibleCreatures();
     this.readRadarBlips();
+
+    // update fishs with zone and scans
+    this.creatures.forEach((c) => {
+      switch (c.type) {
+        case 0:
+          c.zone = new FishZones().zone1;
+          break;
+        case 1:
+          c.zone = new FishZones().zone2;
+          break;
+        case 2:
+          c.zone = new FishZones().zone3;
+          break;
+      }
+
+      c.meScanned = this.myScannedCreatures.includes(c.creatureId);
+      c.foeScanned = this.foeScannedCreatures.includes(c.creatureId);
+    });
   }
   readCreatureCount() {
     const creatureCount: number = parseInt(readline());
@@ -280,6 +298,9 @@ class Creature {
   creatureId: number;
   color: number;
   type: number;
+  meScanned: boolean = false;
+  foeScanned: boolean = false;
+  zone: FishZone;
   constructor(creatureId: number, color: number, type: number) {
     this.creatureId = creatureId;
     this.color = color;
@@ -302,6 +323,12 @@ class FishZones {
   zone1: FishZone = { Ymin: 2500, Ymax: 500 };
   zone2: FishZone = { Ymin: 5000, Ymax: 7500 };
   zone3: FishZone = { Ymin: 7500, Ymax: 10000 };
+}
+
+class FishTypes {
+  Fish1 = 0;
+  Fish2 = 1;
+  Fish3 = 2;
 }
 
 function ifLowerThan10BatteryWaitTurnOffLight(drone: Drone): boolean {
@@ -365,6 +392,8 @@ class GameBoard {
 interface FishZone {
   Ymin: number;
   Ymax: number;
+  fishType?: FishTypes;
+  fishes?: Creature[];
 }
 
 const gameState = new GameState();
