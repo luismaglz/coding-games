@@ -86,6 +86,45 @@ class GameState {
     debug(`radarBlips ${JSON.stringify(this.radarBlips)}`);
   }
 
+  getZ1UnscannedCreatures(): number[] {
+    const droneScans = this.myDrones.map((d) => d.scans).flat();
+    return this.creatures
+      .filter((c) => c.zone.id === 1)
+      .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
+      .filter((c) => !droneScans.includes(c.creatureId))
+      .map((c) => c.creatureId);
+  }
+
+  hasZone1UnscannedCreatures(): boolean {
+    return this.getZ1UnscannedCreatures().length > 0;
+  }
+
+  getZ2UnscannedCreatures(): number[] {
+    const droneScans = this.myDrones.map((d) => d.scans).flat();
+    return this.creatures
+      .filter((c) => c.zone.id === 2)
+      .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
+      .filter((c) => !droneScans.includes(c.creatureId))
+      .map((c) => c.creatureId);
+  }
+
+  hasZone2UnscannedCreatures(): boolean {
+    return this.getZ2UnscannedCreatures().length > 0;
+  }
+
+  getZ3UnscannedCreatures(): number[] {
+    const droneScans = this.myDrones.map((d) => d.scans).flat();
+    return this.creatures
+      .filter((c) => c.zone.id === 3)
+      .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
+      .filter((c) => !droneScans.includes(c.creatureId))
+      .map((c) => c.creatureId);
+  }
+
+  hasZone3UnscannedCreatures(): boolean {
+    return this.getZ3UnscannedCreatures().length > 0;
+  }
+
   readGameState() {
     // this.readCreatureCount();
     this.myScannedCreatures = [];
@@ -305,6 +344,8 @@ class Drone {
     new GoToTop(),
     new InitialSinkAction(),
     new DoZone1Action(),
+    new DoZone2Action(),
+    new DoZone3Action(),
     new DoNothingAction(),
   ];
 
@@ -445,7 +486,7 @@ class DoNothingAction extends DroneAction {
 class GoToTop extends DroneAction {
   runAction(drone: Drone, gameState: GameState): boolean {
     debug("GoToTops");
-    if (drone.scans.length >= 2) {
+    if (drone.scans.length >= 4) {
       drone.move(drone.droneX, 0, false);
       return true;
     }
@@ -462,9 +503,7 @@ class DoZone1Action extends DroneAction {
   runAction(drone: Drone, gameState: GameState): boolean {
     debug("DoZone1Action");
 
-    var unscannedZone1Fish = gameState.creatures
-      .filter((creature) => !drone.scans.includes(creature.creatureId))
-      .filter((c) => !gameState.myScannedCreatures.includes(c.creatureId));
+    var unscannedZone1Fish = gameState.getZ1UnscannedCreatures();
 
     if (unscannedZone1Fish.length === 0) {
       this.completed = true;
@@ -473,9 +512,95 @@ class DoZone1Action extends DroneAction {
 
     var firstFish = unscannedZone1Fish[0];
 
-    var loc = gameState.radarBlips.find(
-      (r) => r.creatureId === firstFish.creatureId
-    );
+    var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
+
+    var radarLoc = loc?.radar;
+
+    if (radarLoc === "TL") {
+      drone.move(drone.droneX - 600, drone.droneY - 600, false);
+
+      return true;
+    } else if (radarLoc === "TR") {
+      drone.move(drone.droneX + 600, drone.droneY, false);
+
+      return true;
+    } else if (radarLoc === "BL") {
+      drone.move(drone.droneX - 600, drone.droneY + 600, false);
+
+      return true;
+    } else if (radarLoc === "BR") {
+      drone.move(drone.droneX + 600, drone.droneY + 600, false);
+
+      return true;
+    }
+
+    drone.wait(false, "Waiting cause nothing else was provided");
+    return true;
+  }
+}
+
+class DoZone2Action extends DroneAction {
+  constructor() {
+    super();
+  }
+
+  runAction(drone: Drone, gameState: GameState): boolean {
+    debug("DoZone2Action");
+
+    var unscannedZone2Fish = gameState.getZ2UnscannedCreatures();
+
+    if (unscannedZone2Fish.length === 0) {
+      this.completed = true;
+      return false;
+    }
+
+    var firstFish = unscannedZone2Fish[0];
+
+    var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
+
+    var radarLoc = loc?.radar;
+
+    if (radarLoc === "TL") {
+      drone.move(drone.droneX - 600, drone.droneY - 600, false);
+
+      return true;
+    } else if (radarLoc === "TR") {
+      drone.move(drone.droneX + 600, drone.droneY, false);
+
+      return true;
+    } else if (radarLoc === "BL") {
+      drone.move(drone.droneX - 600, drone.droneY + 600, false);
+
+      return true;
+    } else if (radarLoc === "BR") {
+      drone.move(drone.droneX + 600, drone.droneY + 600, false);
+
+      return true;
+    }
+
+    drone.wait(false, "Waiting cause nothing else was provided");
+    return true;
+  }
+}
+
+class DoZone3Action extends DroneAction {
+  constructor() {
+    super();
+  }
+
+  runAction(drone: Drone, gameState: GameState): boolean {
+    debug("DoZone3Action");
+
+    var unscannedZone3Fish = gameState.getZ3UnscannedCreatures();
+
+    if (unscannedZone3Fish.length === 0) {
+      this.completed = true;
+      return false;
+    }
+
+    var firstFish = unscannedZone3Fish[0];
+
+    var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
 
     var radarLoc = loc?.radar;
 
