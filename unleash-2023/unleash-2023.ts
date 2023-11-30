@@ -413,6 +413,9 @@ class DoNothingAction extends DroneAction {
 class GoToTop extends DroneAction {
 
   runAction(drone: Drone, gameState: GameState): boolean {
+    debug("GoToTop");
+
+
     if (gameState.droneScans[drone.droneId].length >= 2){
       drone.move(drone.droneX, 0, false);
       return true;
