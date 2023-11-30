@@ -498,6 +498,45 @@ class GoToTop extends DroneAction {
   }
 }
 
+class TurnOnLightAction extends DroneAction{
+  constructor() {
+    super();
+  }
+
+  runAction(drone: Drone, gameState: GameState): boolean {
+    debug("TurnOnLightAction");
+
+    if (drone.battery < 10){
+      drone.wait(true, "Waiting cause battery is low");
+      return true;
+    }
+
+    return false;
+  }
+}
+
+class TurnOnLightActionAt extends DroneAction{
+
+  constructor(public y:number){ 
+    super();
+   }
+
+
+  runAction(drone: Drone, gameState: GameState): boolean {
+    
+    if ((drone.droneY - this.y) < 100){
+      drone.wait(true, "Hit marker, light on baby");
+      this.completed = true;
+      return true;
+    }
+    
+    drone.move(drone.droneX, this.y, true);
+    return true;
+  }
+
+}
+
+
 class DoZone1Action extends DroneAction {
   constructor() {
     super();
