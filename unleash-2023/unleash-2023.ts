@@ -54,6 +54,11 @@ class GameState {
   myScannedCreatures: number[];
   foeScabCount: number;
   foeScannedCreatures: number[];
+  myDroneCount: number;
+  foeDroneCount: number;
+  myDrones: Drone[];
+  foeDrones: Drone[];
+  droneScans: { [key: number]: number[] };
   constructor() {}
 
   readCreatureCount() {
@@ -89,6 +94,67 @@ class GameState {
       const creatureId: number = parseInt(readline());
       this.foeScannedCreatures.push(creatureId);
     }
+  }
+
+  readMyDrones() {
+    const myDroneCount: number = parseInt(readline());
+    for (let i = 0; i < myDroneCount; i++) {
+      var inputs: string[] = readline().split(" ");
+      const droneId: number = parseInt(inputs[0]);
+      const droneX: number = parseInt(inputs[1]);
+      const droneY: number = parseInt(inputs[2]);
+      const emergency: number = parseInt(inputs[3]);
+      const battery: number = parseInt(inputs[4]);
+      this.myDrones.push(
+        new Drone(droneId, droneX, droneY, emergency, battery)
+      );
+    }
+  }
+
+  readFoeDrones() {
+    const foeDroneCount: number = parseInt(readline());
+    for (let i = 0; i < foeDroneCount; i++) {
+      var inputs: string[] = readline().split(" ");
+      const droneId: number = parseInt(inputs[0]);
+      const droneX: number = parseInt(inputs[1]);
+      const droneY: number = parseInt(inputs[2]);
+      const emergency: number = parseInt(inputs[3]);
+      const battery: number = parseInt(inputs[4]);
+      this.foeDrones.push(
+        new Drone(droneId, droneX, droneY, emergency, battery)
+      );
+    }
+  }
+
+  readDroneScans() {
+    const droneScanCount: number = parseInt(readline());
+    for (let i = 0; i < droneScanCount; i++) {
+      var inputs: string[] = readline().split(" ");
+      const droneId: number = parseInt(inputs[0]);
+      const creatureId: number = parseInt(inputs[1]);
+      this.droneScans[droneId].push(creatureId);
+    }
+  }
+}
+
+class Drone {
+  droneId: number;
+  droneX: number;
+  droneY: number;
+  emergency: number;
+  battery: number;
+  constructor(
+    droneId: number,
+    droneX: number,
+    droneY: number,
+    emergency: number,
+    battery: number
+  ) {
+    this.droneId = droneId;
+    this.droneX = droneX;
+    this.droneY = droneY;
+    this.emergency = emergency;
+    this.battery = battery;
   }
 }
 
