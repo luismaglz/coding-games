@@ -440,8 +440,11 @@ class DoNothingAction extends DroneAction {
   }
 }
 
+//sadas
+
 class GoToTop extends DroneAction {
   runAction(drone: Drone, gameState: GameState): boolean {
+    debug("GoToTops");
     if (drone.scans.length >= 2) {
       drone.move(drone.droneX, 0, false);
       return true;
