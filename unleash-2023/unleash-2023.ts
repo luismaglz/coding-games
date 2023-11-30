@@ -58,7 +58,7 @@ class GameState {
   myDroneCount: number = this.myDrones.length;
   foeDrones: Drone[] = [];
   foeDroneCount: number = this.foeDrones.length;
-  droneScans: { [key: number]: number[] };
+  droneScans: { [key: number]: number[] } = {};
   visibleCreatures: VisibleCreature[];
   radarBlips: RadarBlip[];
   constructor() {}
@@ -176,6 +176,7 @@ class GameState {
       var inputs: string[] = readline().split(" ");
       const droneId: number = parseInt(inputs[0]);
       const creatureId: number = parseInt(inputs[1]);
+      if (!this.droneScans[droneId]) this.droneScans[droneId] = [];
       this.droneScans[droneId].push(creatureId);
     }
   }
@@ -292,7 +293,7 @@ class FishZones {
   zone3: FishZone = { Ymin: 7500, Ymax: 10000 };
 }
 
-function ifLowerThan10BatteryWaitTurnOffLight(drone: Drone) : boolean {
+function ifLowerThan10BatteryWaitTurnOffLight(drone: Drone): boolean {
   if (drone.battery < 10) {
     drone.wait(false);
     return true;
@@ -301,8 +302,7 @@ function ifLowerThan10BatteryWaitTurnOffLight(drone: Drone) : boolean {
   return false;
 }
 
-function ifHigherThan2500GoDownUnlessFlaggedToReturn(drone: Drone) : boolean {
-  
+function ifHigherThan2500GoDownUnlessFlaggedToReturn(drone: Drone): boolean {
   if (drone.droneY > 2500 && drone.status !== "GOING UP") {
     drone.move(drone.droneX, 2500, false);
     return true;
@@ -311,33 +311,28 @@ function ifHigherThan2500GoDownUnlessFlaggedToReturn(drone: Drone) : boolean {
   return false;
 }
 
-function moveRightUntilNoFish(drone:Drone) {
-
+function moveRightUntilNoFish(drone: Drone) {
   if (drone.droneX <= 10000) {
-    drone.move(drone.droneX + 100, drone.droneY, true);    
+    drone.move(drone.droneX + 100, drone.droneY, true);
     return true;
   }
-  
-    drone.status = "GOING UP";
-    return false;  
+
+  drone.status = "GOING UP";
+  return false;
 }
 
-function returnToSurface(force:boolean = false):boolean{
-
-  if (force || drone.status === "GOING UP"){
-    drone.move(drone.droneX, drone.droneY-100, false);
+function returnToSurface(force: boolean = false): boolean {
+  if (force || drone.status === "GOING UP") {
+    drone.move(drone.droneX, drone.droneY - 100, false);
     return true;
-  }  
+  }
 
   return false;
 }
 
-
 // const rules:()=>boolean[] = [
 //   ifLowerThan10BatteryWaitTurnOffLight
 // ];
-
-
 
 // gamne loop for codingame
 
@@ -363,28 +358,26 @@ while (true) {
   for (let i = 0; i < gameState.myDrones.length; i++) {
     var drone = gameState.myDrones[i];
 
-    // if we're higher than 
+    // if we're higher than
 
-    if (returnToSurface()){
+    if (returnToSurface()) {
       continue;
     }
 
-    if (ifLowerThan10BatteryWaitTurnOffLight(drone)){
+    if (ifLowerThan10BatteryWaitTurnOffLight(drone)) {
       continue;
     }
 
-    if (ifHigherThan2500GoDownUnlessFlaggedToReturn(drone)){
+    if (ifHigherThan2500GoDownUnlessFlaggedToReturn(drone)) {
       continue;
     }
 
-    if (moveRightUntilNoFish(drone)){
+    if (moveRightUntilNoFish(drone)) {
       continue;
     }
 
-
-    
     // fallback
-    if (returnToSurface(true)){
+    if (returnToSurface(true)) {
       continue;
     }
 
