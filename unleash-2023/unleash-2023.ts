@@ -242,12 +242,12 @@ class Drone {
     this.battery = battery;
   }
 
-  wait(light: boolean) {
-    console.log(`WAIT ${light ? 1 : 0}`);
+  wait(light: boolean, message: string = "") {
+    console.log(`WAIT ${light ? 1 : 0} ${message}`);
   }
 
-  move(x: number, y: number, light: boolean) {
-    console.log(`MOVE ${x} ${y} ${light ? 1 : 0}`);
+  move(x: number, y: number, light: boolean, message: string = "") {
+    console.log(`MOVE ${x} ${y} ${light ? 1 : 0} ${message}`);
   }
 
   debugPosition() {
