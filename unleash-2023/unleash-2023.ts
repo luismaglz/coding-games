@@ -219,7 +219,7 @@ class Drone {
   droneY: number;
   emergency: number;
   battery: number;
-  status: "GOING UP" | "SCANNING";
+  status: "GOING UP" | "SCANNING" = "SCANNING";
   constructor(
     droneId: number,
     droneX: number,
