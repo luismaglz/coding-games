@@ -379,6 +379,12 @@ class Drone {
     this.scans = [];
   }
   droneActions: DroneAction[] = [
+    new FlashLightEvery3Ticks(),
+    new TurnOffLightIfLowBattery(),
+    new MoveTo(500, 2500),
+    new MoveTo(500, 6500),
+    new MoveTo(500, 9000),
+
     // new BailIfMonster(),
     // new TurnOnLightActionAt(3500, -500),
     // new TurnOnLightActionAt(6500, -500),
@@ -386,13 +392,13 @@ class Drone {
     // new TurnOnLightActionAt(8500, 500),
     // new TurnOnLightActionAt(6500, 500),
     // new TurnOnLightActionAt(3500, 500),
-    new GoToTop(),
-    new InitialSinkAction(),
-    new DoZone1Action(),
-    new DoZone2Action(),
-    new DoZone3Action(),
-    new GoToTop(true),
-    new DoNothingAction(),
+    // new GoToTop(),
+    // new InitialSinkAction(),
+    // new DoZone1Action(),
+    // new DoZone2Action(),
+    // new DoZone3Action(),
+    // new GoToTop(true),
+    // new DoNothingAction(),
   ];
 
   constructor(
@@ -494,277 +500,273 @@ abstract class DroneAction {
     this.completed = false;
   }
 
-  abstract runAction(drone: Drone, gameState: GameState): boolean;
+  abstract runAction(drone: Drone, gameState: GameState, action:DroneActionLol): boolean;
 }
 
-class InitialSinkAction extends DroneAction {
-  constructor() {
-    super();
-  }
-
-  runAction(drone: Drone): boolean {
-    debug("InitialSinkAction");
-
-    if (drone.droneY >= 2500) {
-      this.completed = true;
-      // action complete. do not stop processing other actions
-      return false;
-    }
-
-    if (drone.droneY < 2500) {
-      drone.move(drone.droneX, 10000, false);
-      return true;
-    }
-
-    return false;
-  }
-}
-class DoNothingAction extends DroneAction {
-  constructor() {
-    super();
-  }
-
-  runAction(drone: Drone): boolean {
-    debug("DoNothingAction");
-
-    drone.wait(false, "Waiting cause nothing else was provided");
-    return true;
-  }
-}
-
-//sadas
-
-class GoToTop extends DroneAction {
-  runAction(drone: Drone, gameState: GameState): boolean {
-    debug(`GoToTops force: ${this.force}`);
-    if (this.force) {
-      drone.move(drone.droneX, 0, false);
-      return true;
-    }
-    if (drone.scans.length >= 1) {
-      drone.move(drone.droneX, 0, false);
-      return true;
-    }
-
-    return false;
-  }
-  constructor(private force: boolean = false) {
-    super();
-  }
-}
-
-class GoToTopForce extends DroneAction {
-  runAction(drone: Drone, gameState: GameState): boolean {
-    debug("GoToTops");
-    drone.move(drone.droneX, 0, false);
-    return true;
-  }
-}
-
-class TurnOnLightAction extends DroneAction {
-  constructor() {
-    super();
-  }
-
-  runAction(drone: Drone, gameState: GameState): boolean {
-    debug("TurnOnLightAction");
-
-    if (drone.battery < 10) {
-      drone.wait(true, "Waiting cause battery is low");
-      return true;
-    }
-
-    return false;
-  }
-}
-
-class BailIfMonster extends DroneAction {
-  constructor() {
-    super();
-  }
-
-  runAction(drone: Drone, gameState: GameState): boolean {
-    debug("BailIfMonster");
-
-    if (gameState.isMonsterWithinDroneRange(drone)) {
-      drone.move(drone.droneX, 0, false);
-      return false;
-    }
-
-    return false;
-  }
-}
-
-class TurnOnLightActionAt extends DroneAction {
-  constructor(
-    public y: number,
-    public xoffset: number = 0
-  ) {
-    super();
-  }
+// class InitialSinkAction extends DroneAction {
+//   constructor() {
+//     super();
+//   }
+
+//   runAction(drone: Drone): boolean {
+//     debug("InitialSinkAction");
+
+//     if (drone.droneY >= 2500) {
+//       this.completed = true;
+//       // action complete. do not stop processing other actions
+//       return false;
+//     }
+
+//     if (drone.droneY < 2500) {
+//       drone.move(drone.droneX, 10000, false);
+//       return true;
+//     }
+
+//     return false;
+//   }
+// }
+// class DoNothingAction extends DroneAction {
+//   constructor() {
+//     super();
+//   }
+
+//   runAction(drone: Drone): boolean {
+//     debug("DoNothingAction");
+
+//     drone.wait(false, "Waiting cause nothing else was provided");
+//     return true;
+//   }
+// }
+
+// //sadas
+
+// class GoToTop extends DroneAction {
+//   runAction(drone: Drone, gameState: GameState): boolean {
+//     debug(`GoToTops force: ${this.force}`);
+//     if (this.force) {
+//       drone.move(drone.droneX, 0, false);
+//       return true;
+//     }
+//     if (drone.scans.length >= 1) {
+//       drone.move(drone.droneX, 0, false);
+//       return true;
+//     }
+
+//     return false;
+//   }
+//   constructor(private force: boolean = false) {
+//     super();
+//   }
+// }
+
+// class GoToTopForce extends DroneAction {
+//   runAction(drone: Drone, gameState: GameState): boolean {
+//     debug("GoToTops");
+//     drone.move(drone.droneX, 0, false);
+//     return true;
+//   }
+// }
+
+// class TurnOnLightAction extends DroneAction {
+//   constructor() {
+//     super();
+//   }
+
+//   runAction(drone: Drone, gameState: GameState): boolean {
+//     debug("TurnOnLightAction");
+
+//     if (drone.battery < 10) {
+//       drone.wait(true, "Waiting cause battery is low");
+//       return true;
+//     }
+
+//     return false;
+//   }
+// }
+
+// class BailIfMonster extends DroneAction {
+//   constructor() {
+//     super();
+//   }
+
+//   runAction(drone: Drone, gameState: GameState): boolean {
+//     debug("BailIfMonster");
+
+//     if (gameState.isMonsterWithinDroneRange(drone)) {
+//       drone.move(drone.droneX, 0, false);
+//       return false;
+//     }
+
+//     return false;
+//   }
+// }
+
+// class TurnOnLightActionAt extends DroneAction {
+//   constructor(
+//     public y: number,
+//     public xoffset: number = 0
+//   ) {
+//     super();
+//   }
 
-  runAction(drone: Drone, gameState: GameState): boolean {
-    debug(`TurnOnLightActionAt ${this.y}`);
+//   runAction(drone: Drone, gameState: GameState): boolean {
+//     debug(`TurnOnLightActionAt ${this.y}`);
 
-    const shouldTurnOnLight = !gameState.isMonsterWithinDroneRange(drone);
+//     const shouldTurnOnLight = !gameState.isMonsterWithinDroneRange(drone);
 
-    if (Math.abs(drone.droneY - this.y) < 100) {
-      drone.wait(shouldTurnOnLight, "Hit marker, light on baby");
-      this.completed = true;
-      return true;
-    }
+//     if (Math.abs(drone.droneY - this.y) < 100) {
+//       drone.wait(shouldTurnOnLight, "Hit marker, light on baby");
+//       this.completed = true;
+//       return true;
+//     }
 
-    // move each drone to the center of it's lane.
-    drone.move(
-      (drone.isLeft ? 2500 : 6500) - this.xoffset,
-      this.y,
-      false,
-      "moving to light on"
-    );
-    return true;
-  }
-}
+//     // move each drone to the center of it's lane.
+//     drone.move(
+//       (drone.isLeft ? 2500 : 6500) - this.xoffset,
+//       this.y,
+//       false,
+//       "moving to light on"
+//     );
+//     return true;
+//   }
+// }
 
-class DoZone1Action extends DroneAction {
-  constructor() {
-    super();
-  }
+// class DoZone1Action extends DroneAction {
+//   constructor() {
+//     super();
+//   }
 
-  runAction(drone: Drone, gameState: GameState): boolean {
-    debug("DoZone1Action");
+//   runAction(drone: Drone, gameState: GameState): boolean {
+//     debug("DoZone1Action");
 
-    var unscannedZone1Fish = gameState.getZ1UnscannedCreatures();
+//     var unscannedZone1Fish = gameState.getZ1UnscannedCreatures();
 
-    if (unscannedZone1Fish.length === 0) {
-      this.completed = true;
-      return false;
-    }
+//     if (unscannedZone1Fish.length === 0) {
+//       this.completed = true;
+//       return false;
+//     }
 
-    var firstFish = unscannedZone1Fish[0];
-    gameState.targetFish.push(firstFish);
+//     var firstFish = unscannedZone1Fish[0];
+//     gameState.targetFish.push(firstFish);
 
-    var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
+//     var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
 
-    var radarLoc = loc?.radar;
+//     var radarLoc = loc?.radar;
 
-    if (radarLoc === "TL") {
-      drone.move(drone.droneX - 600, drone.droneY - 600, false);
+//     if (radarLoc === "TL") {
+//       drone.move(drone.droneX - 600, drone.droneY - 600, false);
 
-      return true;
-    } else if (radarLoc === "TR") {
-      drone.move(drone.droneX + 600, drone.droneY, false);
+//       return true;
+//     } else if (radarLoc === "TR") {
+//       drone.move(drone.droneX + 600, drone.droneY, false);
 
-      return true;
-    } else if (radarLoc === "BL") {
-      drone.move(drone.droneX - 600, drone.droneY + 600, false);
+//       return true;
+//     } else if (radarLoc === "BL") {
+//       drone.move(drone.droneX - 600, drone.droneY + 600, false);
 
-      return true;
-    } else if (radarLoc === "BR") {
-      drone.move(drone.droneX + 600, drone.droneY + 600, false);
+//       return true;
+//     } else if (radarLoc === "BR") {
+//       drone.move(drone.droneX + 600, drone.droneY + 600, false);
 
-      return true;
-    }
+//       return true;
+//     }
 
-    drone.wait(false, "Waiting cause nothing else was provided");
-    return true;
-  }
-}
+//     drone.wait(false, "Waiting cause nothing else was provided");
+//     return true;
+//   }
+// }
 
-class DoZone2Action extends DroneAction {
-  constructor() {
-    super();
-  }
+// class DoZone2Action extends DroneAction {
+//   constructor() {
+//     super();
+//   }
 
-  runAction(drone: Drone, gameState: GameState): boolean {
-    debug("DoZone2Action");
+//   runAction(drone: Drone, gameState: GameState): boolean {
+//     debug("DoZone2Action");
 
-    var unscannedZone2Fish = gameState.getZ2UnscannedCreatures();
+//     var unscannedZone2Fish = gameState.getZ2UnscannedCreatures();
 
-    if (unscannedZone2Fish.length === 0) {
-      this.completed = true;
-      return false;
-    }
+//     if (unscannedZone2Fish.length === 0) {
+//       this.completed = true;
+//       return false;
+//     }
 
-    var firstFish = unscannedZone2Fish[0];
-    gameState.targetFish.push(firstFish);
+//     var firstFish = unscannedZone2Fish[0];
+//     gameState.targetFish.push(firstFish);
 
-    var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
+//     var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
 
-    var radarLoc = loc?.radar;
+//     var radarLoc = loc?.radar;
 
-    if (radarLoc === "TL") {
-      drone.move(drone.droneX - 600, drone.droneY - 600, false);
+//     if (radarLoc === "TL") {
+//       drone.move(drone.droneX - 600, drone.droneY - 600, false);
 
-      return true;
-    } else if (radarLoc === "TR") {
-      drone.move(drone.droneX + 600, drone.droneY, false);
+//       return true;
+//     } else if (radarLoc === "TR") {
+//       drone.move(drone.droneX + 600, drone.droneY, false);
 
-      return true;
-    } else if (radarLoc === "BL") {
-      drone.move(drone.droneX - 600, drone.droneY + 600, false);
+//       return true;
+//     } else if (radarLoc === "BL") {
+//       drone.move(drone.droneX - 600, drone.droneY + 600, false);
 
-      return true;
-    } else if (radarLoc === "BR") {
-      drone.move(drone.droneX + 600, drone.droneY + 600, false);
+//       return true;
+//     } else if (radarLoc === "BR") {
+//       drone.move(drone.droneX + 600, drone.droneY + 600, false);
 
-      return true;
-    }
+//       return true;
+//     }
 
-    drone.wait(false, "Waiting cause nothing else was provided");
-    return true;
-  }
-}
+//     drone.wait(false, "Waiting cause nothing else was provided");
+//     return true;
+//   }
+// }
 
-class DroneActionLol{
-  light:boolean = false;
-  targetLocation: {x:number, y:number} = {x:0, y:0};
-}
 
 
-class DoZone3Action extends DroneAction {
-  constructor() {
-    super();
-  }
+// class DoZone3Action extends DroneAction {
+//   constructor() {
+//     super();
+//   }
 
-  runAction(drone: Drone, gameState: GameState): boolean {
-    debug("DoZone3Action");
+//   runAction(drone: Drone, gameState: GameState): boolean {
+//     debug("DoZone3Action");
 
-    var unscannedZone3Fish = gameState.getZ3UnscannedCreatures();
+//     var unscannedZone3Fish = gameState.getZ3UnscannedCreatures();
 
-    if (unscannedZone3Fish.length === 0) {
-      this.completed = true;
-      return false;
-    }
+//     if (unscannedZone3Fish.length === 0) {
+//       this.completed = true;
+//       return false;
+//     }
 
-    var firstFish = unscannedZone3Fish[0];
-    gameState.targetFish.push(firstFish);
+//     var firstFish = unscannedZone3Fish[0];
+//     gameState.targetFish.push(firstFish);
 
-    var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
+//     var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
 
-    var radarLoc = loc?.radar;
+//     var radarLoc = loc?.radar;
 
-    if (radarLoc === "TL") {
-      drone.move(drone.droneX - 600, drone.droneY - 600, false);
+//     if (radarLoc === "TL") {
+//       drone.move(drone.droneX - 600, drone.droneY - 600, false);
 
-      return true;
-    } else if (radarLoc === "TR") {
-      drone.move(drone.droneX + 600, drone.droneY, false);
+//       return true;
+//     } else if (radarLoc === "TR") {
+//       drone.move(drone.droneX + 600, drone.droneY, false);
 
-      return true;
-    } else if (radarLoc === "BL") {
-      drone.move(drone.droneX - 600, drone.droneY + 600, false);
+//       return true;
+//     } else if (radarLoc === "BL") {
+//       drone.move(drone.droneX - 600, drone.droneY + 600, false);
 
-      return true;
-    } else if (radarLoc === "BR") {
-      drone.move(drone.droneX + 600, drone.droneY + 600, false);
+//       return true;
+//     } else if (radarLoc === "BR") {
+//       drone.move(drone.droneX + 600, drone.droneY + 600, false);
 
-      return true;
-    }
+//       return true;
+//     }
 
-    drone.wait(false, "Waiting cause nothing else was provided");
-    return true;
-  }
-}
+//     drone.wait(false, "Waiting cause nothing else was provided");
+//     return true;
+//   }
+// }
 
 class GameBoard {
   minX: number = 1;
@@ -781,6 +783,72 @@ interface FishZone {
   fishes?: Creature[];
 }
 
+class DroneActionLol{
+  light:boolean = false;
+  targetLocation: {x:number, y:number} = {x:0, y:0};
+  wait:boolean = false;
+  message:string = "";
+}
+
+
+
+class FlashLightEvery3Ticks extends DroneAction{
+  ticks:number = 0;
+
+  constructor(){
+    super();
+  }
+
+  runAction(drone: Drone, gameState: GameState, action:DroneActionLol): boolean{
+
+    this.ticks++;
+
+    if (this.ticks % 3 === 0){
+      action.light = true;
+    }
+    
+    
+    return false;
+  }
+}
+
+class TurnOffLightIfLowBattery extends DroneAction{
+  constructor(){
+    super();
+  }
+
+  runAction(drone: Drone, gameState: GameState, action:DroneActionLol): boolean{
+
+    if (drone.battery < 10){
+      action.light = false;
+    }
+    
+    
+    return false;
+  }
+}
+
+class MoveTo extends DroneAction{
+
+  constructor(public x:number, public y:number){
+    super();
+  }
+
+  runAction(drone: Drone, gameState: GameState, action: DroneActionLol): boolean {
+    if (Math.abs(drone.droneX - this.x) < 100 && Math.abs(drone.droneY - this.y) < 100){
+      this.completed = true;
+      return false;
+    }
+
+    action.targetLocation.x = this.x;
+    action.targetLocation.y = this.y;
+    return true;
+  }
+
+}
+
+
+
 const gameState = new GameState();
 gameState.readCreatureCount();
 
@@ -793,17 +861,28 @@ while (true) {
 
     // if we're higher than
 
+    const droneAction = new DroneActionLol();
+
     for (const action of drone.droneActions) {
       if (action.completed) {
         continue;
       }
 
-      var response = action.runAction(drone, gameState);
+      var response = action.runAction(drone, gameState, droneAction);
 
-      if (response) {
+      if (response) {    
         break;
       }
     }
+
+    // avoidance
+
+    if (droneAction.wait){
+      drone.wait(droneAction.light, droneAction.message);
+    } else{
+      drone.move(droneAction.targetLocation.x, droneAction.targetLocation.y, droneAction.light, droneAction.message);
+    }
+
 
     // // if (returnToSurface()) {
     // //   continue;
@@ -838,3 +917,6 @@ while (true) {
 function debug(message: string) {
   printErr(message);
 }
+
+
+
