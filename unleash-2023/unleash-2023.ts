@@ -403,11 +403,7 @@ class Drone {
   }
  
   droneActions: DroneAction[] = [
-    new FlashLightEvery3Ticks(),
-    new TurnOffLightIfLowBattery(),
-    new MoveTo(500, 2500),
-    new MoveTo(500, 6500),
-    new MoveTo(500, 9000),
+   
 
     // new BailIfMonster(),
     // new TurnOnLightActionAt(3500, -500),
@@ -441,8 +437,23 @@ class Drone {
     this.initialX = droneX;
     if (this.initialX < 5000) {
       this.isLeft = true;
+
+      this.droneActions = [ new FlashLightEvery3Ticks(),
+        new TurnOffLightIfLowBattery(),
+        new MoveTo(500, 2500),
+        new MoveTo(500, 6500),
+        new MoveTo(500, 9000),];
+
+
     } else {
       this.isLeft = false;
+
+      this.droneActions = [ new FlashLightEvery3Ticks(),
+        new TurnOffLightIfLowBattery(),
+        new MoveTo(9500, 2500),
+        new MoveTo(5000, 6500),
+        new MoveTo(9500, 9000),];
+
     }    
   }
 
@@ -873,6 +884,77 @@ class MoveTo extends DroneAction{
 
 }
 
+interface Vector {
+  startX:number;
+  endX:number;
+  startY:number;
+  endY:number;
+}
+
+ // find out if any bad guy locations are going to insect with our drone's location
+    // find out if two vectors are going to intersect
+    function willDroneInterceptCreature(
+      Drone: Drone,
+      droneTarget: DroneActionLol,
+      creature: VisibleCreature
+    ){
+      const maxDroneMoveUnits = 600;
+      
+      const droneVector = {
+        startX: Drone.droneX,
+        endX: droneTarget.targetLocation.x,
+        startY: Drone.droneY,
+        endY: droneTarget.targetLocation.y,
+      };
+
+      // reduce drone vector to max move units
+      const droneVectorLength = Math.sqrt(Math.pow(droneVector.endX - droneVector.startX, 2) + Math.pow(droneVector.endY - droneVector.startY, 2));
+      const droneVectorUnitX = (droneVector.endX - droneVector.startX) / droneVectorLength;
+      const droneVectorUnitY = (droneVector.endY - droneVector.startY) / droneVectorLength;
+      droneVector.endX = droneVector.startX + droneVectorUnitX * maxDroneMoveUnits;
+      droneVector.endY = droneVector.startY + droneVectorUnitY * maxDroneMoveUnits;
+
+      const creatureVector = {
+        startX: creature.creatureX,
+        endX: creature.creatureX + creature.creatureVx,
+        startY: creature.creatureY,
+        endY: creature.creatureY + creature.creatureVy,
+      };
+
+      const intersection = getIntersection(droneVector, creatureVector);
+      return !!intersection;
+
+    }
+
+    function getIntersection(droneVector:Vector, creatureVector:Vector):{x:number, y:number} | null{
+      const x1 = droneVector.startX;
+      const y1 = droneVector.startY;
+      const x2 = droneVector.endX;
+      const y2 = droneVector.endY;
+
+      const x3 = creatureVector.startX;
+      const y3 = creatureVector.startY;
+      const x4 = creatureVector.endX;
+      const y4 = creatureVector.endY;
+
+      const denominator = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+
+      if (denominator === 0){
+        return null;
+      }
+
+      const t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / denominator;
+      const u = -((x1-x2)*(y1-y3) - (y1-y2)*(x1-x3)) / denominator;
+
+      if (t > 0 && t < 1 && u > 0){
+        const x = x1 + t * (x2 - x1);
+        const y = y1 + t * (y2 - y1);
+        return {x, y};
+      }
+
+      return null;
+    }
+
 
 
 const gameState = new GameState();
@@ -903,8 +985,13 @@ while (true) {
     }
 
     
+    for ( const monst of Object.values(gameState.lastKnownMonsterLocations)){
+      if (willDroneInterceptCreature(drone, droneAction, monst)){
+        debug(`Drone ${drone.droneId} will intercept monster ${monst.creatureId}`);        
+      }
+    }
 
-    
+   
     
 
     
