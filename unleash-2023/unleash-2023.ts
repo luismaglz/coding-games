@@ -41,6 +41,13 @@
 // BR: the creature is to the bottom-right of the drone.
 // BL: the creature is to the bottom-left of the drone.
 
+
+// surface is y 0
+// bottom is y 10000
+// left is x 0
+// right is x 10000
+
+
 declare function readline(): string;
 declare function print(value: string): void;
 declare function printErr(message: string): void;
