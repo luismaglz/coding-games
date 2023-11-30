@@ -438,7 +438,7 @@ class Drone {
       this.droneActions = [
         new FlashLightEvery3Ticks(),
         new TurnOffLightIfLowBattery(),
-        // new MoveTo(5000, 9000),
+        new MoveTo(5000, 9000),
         new GoToTop(false, 3),
         new DoZone3Action(),
         new DoZone2Action(),
@@ -451,7 +451,7 @@ class Drone {
       this.droneActions = [
         new FlashLightEvery3Ticks(),
         new TurnOffLightIfLowBattery(),
-        // new MoveTo(5000, 9000),
+        new MoveTo(5000, 9000),
         new GoToTop(false, 4),
         new DoZone1Action(),
         new DoZone2Action(),
@@ -919,8 +919,8 @@ class MoveTo extends DroneAction {
     action: DroneActionLol
   ): boolean {
     if (
-      Math.abs(drone.droneX - this.x) < 100 &&
-      Math.abs(drone.droneY - this.y) < 100
+      Math.abs(drone.droneX - this.x) < 300 &&
+      Math.abs(drone.droneY - this.y) < 300
     ) {
       this.completed = true;
       return false;
