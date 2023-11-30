@@ -720,7 +720,7 @@ gameState.readCreatureCount();
 // game loop
 while (true) {
   gameState.readGameState();
-  // gameState.log();
+  gameState.log();
   for (let i = 0; i < gameState.myDrones.length; i++) {
     var drone = gameState.myDrones[i];
 
