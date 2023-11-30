@@ -67,24 +67,38 @@ class GameState {
   visibleCreatures: VisibleCreature[];
   radarBlips: RadarBlip[];
   targetFish: number[];
+  monsters: number[];
   constructor() {}
 
   log(): void {
-    debug(`creatureCount ${JSON.stringify(this.creatureCount)}`);
-    debug(`creatures ${JSON.stringify(this.creatures)}`);
-    debug(`myScore ${JSON.stringify(this.myScore)}`);
-    debug(`foeScore ${JSON.stringify(this.foeScore)}`);
-    debug(`myScanCount ${JSON.stringify(this.myScanCount)}`);
-    debug(`myScannedCreatures ${JSON.stringify(this.myScannedCreatures)}`);
-    debug(`foeScabCount ${JSON.stringify(this.foeScabCount)}`);
-    debug(`foeScannedCreatures ${JSON.stringify(this.foeScannedCreatures)}`);
-    debug(`myDrones ${JSON.stringify(this.myDrones)}`);
-    debug(`myDroneCount ${JSON.stringify(this.myDroneCount)}`);
-    debug(`foeDrones ${JSON.stringify(this.foeDrones)}`);
-    debug(`foeDroneCount ${JSON.stringify(this.foeDroneCount)}`);
-    debug(`droneScans ${JSON.stringify(this.droneScans)}`);
+    // debug(`creatureCount ${JSON.stringify(this.creatureCount)}`);
+    // debug(`creatures ${JSON.stringify(this.creatures)}`);
+    // debug(`myScore ${JSON.stringify(this.myScore)}`);
+    // debug(`foeScore ${JSON.stringify(this.foeScore)}`);
+    // debug(`myScanCount ${JSON.stringify(this.myScanCount)}`);
+    // debug(`myScannedCreatures ${JSON.stringify(this.myScannedCreatures)}`);
+    // debug(`foeScabCount ${JSON.stringify(this.foeScabCount)}`);
+    // debug(`foeScannedCreatures ${JSON.stringify(this.foeScannedCreatures)}`);
+    // debug(`myDrones ${JSON.stringify(this.myDrones)}`);
+    // debug(`myDroneCount ${JSON.stringify(this.myDroneCount)}`);
+    // debug(`foeDrones ${JSON.stringify(this.foeDrones)}`);
+    // debug(`foeDroneCount ${JSON.stringify(this.foeDroneCount)}`);
+    // debug(`droneScans ${JSON.stringify(this.droneScans)}`);
     debug(`visibleCreatures ${JSON.stringify(this.visibleCreatures)}`);
-    debug(`radarBlips ${JSON.stringify(this.radarBlips)}`);
+    // debug(`radarBlips ${JSON.stringify(this.radarBlips)}`);
+    debug(`monsters ${JSON.stringify(this.monsters)}`);
+  }
+
+  isMonsterWithinDroneRange(drone: Drone) {
+    const monsters = this.creatures
+      .filter((c) => c.type === -1)
+      .map((c) => c.creatureId);
+
+    const monstersVisible = this.visibleCreatures.filter((c) =>
+      monsters.includes(c.creatureId)
+    );
+
+    return monstersVisible.length > 0;
   }
 
   getZ1UnscannedCreatures(): number[] {
@@ -168,6 +182,14 @@ class GameState {
 
     this.removeClaimedFromScans();
     this.targetFish = [];
+
+    const monsters = this.creatures
+      .filter((c) => c.type === -1)
+      .map((c) => c.creatureId);
+    // find monsters in visible creatures
+    this.monsters = this.visibleCreatures
+      .filter((c) => monsters.includes(c.creatureId))
+      .map((c) => c.creatureId);
   }
 
   removeClaimedFromScans() {
@@ -347,7 +369,8 @@ class Drone {
     this.scans = [];
   }
   droneActions: DroneAction[] = [
-    new TurnOnLightActionAt(3500,-500),
+    // new BailIfMonster(),
+    new TurnOnLightActionAt(3500, -500),
     new TurnOnLightActionAt(6500, -500),
     new TurnOnLightActionAt(8500, -500),
     new TurnOnLightActionAt(8500, 500),
@@ -508,7 +531,7 @@ class GoToTop extends DroneAction {
       drone.move(drone.droneX, 0, false);
       return true;
     }
-    if (drone.scans.length >= 3) {
+    if (drone.scans.length >= 1) {
       drone.move(drone.droneX, 0, false);
       return true;
     }
@@ -545,22 +568,49 @@ class TurnOnLightAction extends DroneAction {
   }
 }
 
+class BailIfMonster extends DroneAction {
+  constructor() {
+    super();
+  }
+
+  runAction(drone: Drone, gameState: GameState): boolean {
+    debug("BailIfMonster");
+
+    if (gameState.isMonsterWithinDroneRange(drone)) {
+      drone.move(drone.droneX, 0, false);
+      return false;
+    }
+
+    return false;
+  }
+}
+
 class TurnOnLightActionAt extends DroneAction {
-  constructor(public y: number, public xoffset: number = 0) {
+  constructor(
+    public y: number,
+    public xoffset: number = 0
+  ) {
     super();
   }
 
   runAction(drone: Drone, gameState: GameState): boolean {
     debug(`TurnOnLightActionAt ${this.y}`);
 
+    const shouldTurnOnLight = !gameState.isMonsterWithinDroneRange(drone);
+
     if (Math.abs(drone.droneY - this.y) < 100) {
-      drone.wait(true, "Hit marker, light on baby");
+      drone.wait(shouldTurnOnLight, "Hit marker, light on baby");
       this.completed = true;
       return true;
     }
 
     // move each drone to the center of it's lane.
-    drone.move((drone.isLeft ? 2500 : 6500) - this.xoffset, this.y, false, "moving to light on");
+    drone.move(
+      (drone.isLeft ? 2500 : 6500) - this.xoffset,
+      this.y,
+      false,
+      "moving to light on"
+    );
     return true;
   }
 }
