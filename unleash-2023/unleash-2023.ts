@@ -347,11 +347,12 @@ class Drone {
     this.scans = [];
   }
   droneActions: DroneAction[] = [
-    new TurnOnLightActionAt(3500),
-    new TurnOnLightActionAt(6500),
-    new TurnOnLightActionAt(8500),
-    new TurnOnLightActionAt(6500),
-    new TurnOnLightActionAt(3500),
+    new TurnOnLightActionAt(3500,-500),
+    new TurnOnLightActionAt(6500, -500),
+    new TurnOnLightActionAt(8500, -500),
+    new TurnOnLightActionAt(8500, 500),
+    new TurnOnLightActionAt(6500, 500),
+    new TurnOnLightActionAt(3500, 500),
     new GoToTop(),
     new InitialSinkAction(),
     new DoZone1Action(),
@@ -545,7 +546,7 @@ class TurnOnLightAction extends DroneAction {
 }
 
 class TurnOnLightActionAt extends DroneAction {
-  constructor(public y: number) {
+  constructor(public y: number, public xoffset: number = 0) {
     super();
   }
 
@@ -559,7 +560,7 @@ class TurnOnLightActionAt extends DroneAction {
     }
 
     // move each drone to the center of it's lane.
-    drone.move(drone.isLeft ? 2500 : 6500, this.y, false, "moving to light on");
+    drone.move((drone.isLeft ? 2500 : 6500) - this.xoffset, this.y, false, "moving to light on");
     return true;
   }
 }
