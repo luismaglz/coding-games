@@ -334,6 +334,7 @@ while (true) {
   //     const radar: string = inputs[2];
   //   }
   gameState.readGameState();
+  printErr(JSON.stringify(gameState));
   for (let i = 0; i < gameState.myDroneCount; i++) {
     // Write an action using console.log()
     // To debug: console.error('Debug messages...');
