@@ -250,10 +250,7 @@ class Drone {
   initialX: number;
   targetPoition: { x: number; y: number } = { x: 0, y: 0 };
 
-  droneActions:DroneAction[] = [
-    new InitialSinkAction()
-  ]
-
+  droneActions: DroneAction[] = [new InitialSinkAction()];
 
   constructor(
     droneId: number,
@@ -387,48 +384,38 @@ function returnToSurface(force: boolean = false): boolean {
   return false;
 }
 
-  abstract class DroneAction {
-    completed: boolean;
+abstract class DroneAction {
+  completed: boolean;
 
-    constructor() {
-      this.completed = false;
-    }
-
-    abstract runAction(drone: Drone): boolean;
+  constructor() {
+    this.completed = false;
   }
 
-  class InitialSinkAction extends DroneAction {
-    constructor() {
-      super();
-    }
+  abstract runAction(drone: Drone): boolean;
+}
 
-    runAction(drone: Drone): boolean {
-      debug("InitialSinkAction");
+class InitialSinkAction extends DroneAction {
+  constructor() {
+    super();
+  }
 
+  runAction(drone: Drone): boolean {
+    debug("InitialSinkAction");
 
-      if (drone.droneY >= 2500) {
-        this.completed = true;
-        // action complete. do not stop processing other actions
-        return false;
-      }
-
-      if (drone.droneY < 2500) {
-        drone.move(drone.droneX, 10000, false);
-        return true;
-      }
-
+    if (drone.droneY >= 2500) {
+      this.completed = true;
+      // action complete. do not stop processing other actions
       return false;
     }
+
+    if (drone.droneY < 2500) {
+      drone.move(drone.droneX, 10000, false);
+      return true;
+    }
+
+    return false;
   }
-
-  
-
-
-
-
-
-
-
+}
 
 class GameBoard {
   minX: number = 1;
@@ -456,22 +443,17 @@ while (true) {
 
     // if we're higher than
 
-    
-    for(const action of drone.droneActions){
-      if(action.completed){
+    for (const action of drone.droneActions) {
+      if (action.completed) {
         continue;
       }
 
       var response = action.runAction(drone);
 
-      if(response){
+      if (response) {
         break;
       }
-
     }
-
-
-
 
     // // if (returnToSurface()) {
     // //   continue;
@@ -498,7 +480,6 @@ while (true) {
     // // To debug: console.error('Debug messages...');
 
     // drone.move(drone.droneX, drone.droneY, false);
-
 
     console.log("WAIT 1"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
   }
