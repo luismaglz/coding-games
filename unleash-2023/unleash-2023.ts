@@ -141,10 +141,35 @@ class Monster {
     };
   }
 
+  getStartPositon(): { x: number; y: number } {
+    return {
+      x: this.creatureX,
+      y: this.creatureY,
+    };
+  }
+
   getEndPosition(): { x: number; y: number } {
     return {
       x: this.creatureX + this.creatureVx,
       y: this.creatureY + this.creatureVy,
+    };
+  }
+
+  getMonsterRectangle() {
+    // get the rectangle of the monster
+    // minX: Math.min(vectorFinalPosition.x, vectorStart.x),
+    // maxX: Math.max(vectorFinalPosition.x, vectorStart.x),
+    // minY: Math.min(vectorFinalPosition.y, vectorStart.y),
+    // maxY: Math.max(vectorFinalPosition.y, vectorStart.y),
+
+    const startPos = this.getStartPositon();
+    const endPos = this.getEndPosition();
+
+    return {
+      minX: Math.min(startPos.x, endPos.x),
+      maxX: Math.max(startPos.x, endPos.x),
+      minY: Math.min(startPos.y, endPos.y),
+      maxY: Math.max(startPos.y, endPos.y),
     };
   }
 }
@@ -605,7 +630,9 @@ class Drone {
         new TurnOffLightIfLowBattery(0),
         new MoveTo(6500, 8000),
         new InitialGoToTop(),
-        new ScanCreatures(),
+        new ScanCreatures(() => gameState.getZ1UnscannedCreatures()),
+        new ScanCreatures(() => gameState.getZ2UnscannedCreatures()),
+        new ScanCreatures(() => gameState.getZ3UnscannedCreatures()),
         new GoToTop(true, 2),
       ];
     } else {
@@ -616,7 +643,9 @@ class Drone {
         new TurnOffLightIfLowBattery(0),
         new MoveTo(2500, 8000),
         new InitialGoToTop(),
-        new ScanCreatures(),
+        new ScanCreatures(() => gameState.getZ1UnscannedCreatures()),
+        new ScanCreatures(() => gameState.getZ2UnscannedCreatures()),
+        new ScanCreatures(() => gameState.getZ3UnscannedCreatures()),
         new GoToTop(true, 2),
       ];
     }
@@ -702,7 +731,7 @@ class GoToTop extends DroneAction {
 }
 
 class ScanCreatures extends DroneAction {
-  constructor() {
+  constructor(private fishGetter: () => number[]) {
     super();
   }
 
@@ -711,31 +740,100 @@ class ScanCreatures extends DroneAction {
     gameState: GameState,
     droneAction: DroneActionLol
   ): boolean {
-    debug("ScanCreatures");
+    debug("DoZone2Action");
 
-    var unscannedFish = gameState.getUnscannedCreatures();
-
-    if (unscannedFish.length === 0) {
+    const fish = this.fishGetter();
+    if (fish.length === 0) {
       this.completed = true;
       return false;
     }
 
-    var firstFish = unscannedFish[0];
+    var firstFish = fish[0];
     gameState.targetFish.push(firstFish);
 
     var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
+
     var radarLoc = loc?.radar;
 
-    if (radarLoc) {
-      setDroneTargetLocationTowardsCreature(droneAction, radarLoc);
+    if (radarLoc === "TL") {
+      droneAction.targetLocation.x = drone.droneX - 600;
+      droneAction.targetLocation.y = drone.droneY - 600;
+
       return true;
-    } else {
-      return false;
+    } else if (radarLoc === "TR") {
+      droneAction.targetLocation.x = drone.droneX + 600;
+      droneAction.targetLocation.y = drone.droneY - 600;
+
+      return true;
+    } else if (radarLoc === "BL") {
+      droneAction.targetLocation.x = drone.droneX - 600;
+      droneAction.targetLocation.y = drone.droneY + 600;
+
+      return true;
+    } else if (radarLoc === "BR") {
+      droneAction.targetLocation.x = drone.droneX + 600;
+      droneAction.targetLocation.y = drone.droneY + 600;
+
+      return true;
     }
+
     droneAction.wait = true;
     return true;
   }
 }
+
+// class DoZone2Action extends DroneAction {
+//   constructor() {
+//     super();
+//   }
+
+//   runAction(
+//     drone: Drone,
+//     gameState: GameState,
+//     droneAction: DroneActionLol
+//   ): boolean {
+//     debug("DoZone2Action");
+
+//     var unscannedZone2Fish = gameState.getZ2UnscannedCreatures();
+
+//     if (unscannedZone2Fish.length === 0) {
+//       this.completed = true;
+//       return false;
+//     }
+
+//     var firstFish = unscannedZone2Fish[0];
+//     gameState.targetFish.push(firstFish);
+
+//     var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
+
+//     var radarLoc = loc?.radar;
+
+//     if (radarLoc === "TL") {
+//       droneAction.targetLocation.x = drone.droneX - 600;
+//       droneAction.targetLocation.y = drone.droneY - 600;
+
+//       return true;
+//     } else if (radarLoc === "TR") {
+//       droneAction.targetLocation.x = drone.droneX + 600;
+//       droneAction.targetLocation.y = drone.droneY - 600;
+
+//       return true;
+//     } else if (radarLoc === "BL") {
+//       droneAction.targetLocation.x = drone.droneX - 600;
+//       droneAction.targetLocation.y = drone.droneY + 600;
+
+//       return true;
+//     } else if (radarLoc === "BR") {
+//       droneAction.targetLocation.x = drone.droneX + 600;
+//       droneAction.targetLocation.y = drone.droneY + 600;
+
+//       return true;
+//     }
+
+//     droneAction.wait = true;
+//     return true;
+//   }
+// }
 
 class DoZone1Action extends DroneAction {
   constructor() {
@@ -947,8 +1045,8 @@ class MoveTo extends DroneAction {
     action: DroneActionLol
   ): boolean {
     if (
-      Math.abs(drone.droneX - this.x) < 300 &&
-      Math.abs(drone.droneY - this.y) < 300
+      Math.abs(drone.droneX - this.x) < 1000 &&
+      Math.abs(drone.droneY - this.y) < 1000
     ) {
       this.completed = true;
       return false;
@@ -1386,6 +1484,29 @@ function tylarsCollisionAvoidance(
   return;
 }
 
+type CalculatedVector = [number, number];
+
+function areVectorsWithinNUnits(
+  A: CalculatedVector,
+  B: CalculatedVector,
+  N: number
+): boolean {
+  let C: Vector = [A[0] - B[0], A[1] - B[1]]; // Subtract B from A
+  let magnitude_C: number = Math.sqrt(C[0] ** 2 + C[1] ** 2); // Calculate the magnitude of C
+  return magnitude_C <= N; // Check if the magnitude of C is less than or equal to N
+}
+
+// Convert vectors from (startX, endX, startY, endY) to (x, y)
+function convertVector(vector: Vector): CalculatedVector {
+  return [vector.endX - vector.startX, vector.endY - vector.startY];
+}
+
+// Test with your vectors A, B and N
+let A: Vector = convertVector(1, 3, 2, 4);
+let B: Vector = convertVector(5, 7, 6, 8);
+let N: number = 5;
+console.log(areVectorsWithinNUnits(A, B, N));
+
 function newCollisionAvoidance(
   _drone: Drone,
   droneAction: DroneActionLol,
@@ -1437,20 +1558,42 @@ function newCollisionAvoidance(
   const newVectors = createDroneVectors(_drone, deg).filter((myNewVector) => {
     // remove vectors that will collide with monsters
     const vectorsWithCollisions = monsterVectors.filter((monstersVector) => {
-      const intersection = getIntersection(myNewVector, monstersVector);
-
-      const myNewFinalPosition = getVectorFinalPosition(myNewVector);
-      const monstersFinalPosition = getVectorFinalPosition(monstersVector);
-
-      // if our new vector will end up within 500 units of a monster, don't use it
-      const distance = Math.sqrt(
-        Math.pow(monstersFinalPosition.x - myNewFinalPosition.x, 2) +
-          Math.pow(monstersFinalPosition.y - myNewFinalPosition.y, 2)
-      );
-
-      return distance < areaAroundMonsterToAvoid;
-
-      // return !!intersection;
+      // const intersection = getIntersection(myNewVector, monstersVector);
+      // const myNewFinalPosition = getVectorFinalPosition(myNewVector);
+      // const monstersFinalPosition = getVectorFinalPosition(monstersVector);
+      // // if our new vector will end up within 500 units of a monster, don't use it
+      // const distance = Math.sqrt(
+      //   Math.pow(monstersFinalPosition.x - myNewFinalPosition.x, 2) +
+      //     Math.pow(monstersFinalPosition.y - myNewFinalPosition.y, 2)
+      // );
+      // return distance < areaAroundMonsterToAvoid;
+      // If at any point in the vectors we are within 500 units of a monster, don't use it
+      // get rectangle from vector
+      /** RECTANGLE LOGIC */
+      // const vectorFinalPosition = getVectorFinalPosition(myNewVector);
+      // const vectorStart = {
+      //   x: myNewVector.startX,
+      //   y: myNewVector.startY,
+      // };
+      // const vectorRectangle = {
+      //   minX: Math.min(vectorFinalPosition.x, vectorStart.x),
+      //   maxX: Math.max(vectorFinalPosition.x, vectorStart.x),
+      //   minY: Math.min(vectorFinalPosition.y, vectorStart.y),
+      //   maxY: Math.max(vectorFinalPosition.y, vectorStart.y),
+      // };
+      // const monsterRectangles = monsters.map((m) => m.getMonsterRectangle());
+      // // check if any monster rectangles intersect with our vector rectangle
+      // const rectanglesWithCollisions = monsterRectangles.filter((m) => {
+      //   return (
+      //     vectorRectangle.minX < m.maxX &&
+      //     vectorRectangle.maxX > m.minX &&
+      //     vectorRectangle.minY < m.maxY &&
+      //     vectorRectangle.maxY > m.minY
+      //   );
+      // });
+      // return rectanglesWithCollisions.length > 0;
+      /** RECTANGLE logic */
+      // discard vectors that will come within 500 units of a monster vector at any point
     });
 
     return vectorsWithCollisions.length === 0;
@@ -1465,35 +1608,35 @@ function newCollisionAvoidance(
 
   let bestVector: Vector;
 
-  if (!runAway) {
-    // find new vector closest to our drone vector
-    bestVector = newVectors.reduce((prev, curr) => {
-      const prevDistance = Math.sqrt(
-        Math.pow(prev.endX - droneVector.endX, 2) +
-          Math.pow(prev.endY - droneVector.endY, 2)
-      );
-      const currDistance = Math.sqrt(
-        Math.pow(curr.endX - droneVector.endX, 2) +
-          Math.pow(curr.endY - droneVector.endY, 2)
-      );
+  // if (!runAway) {
+  //   // find new vector closest to our drone vector
+  //   bestVector = newVectors.reduce((prev, curr) => {
+  //     const prevDistance = Math.sqrt(
+  //       Math.pow(prev.endX - droneVector.endX, 2) +
+  //         Math.pow(prev.endY - droneVector.endY, 2)
+  //     );
+  //     const currDistance = Math.sqrt(
+  //       Math.pow(curr.endX - droneVector.endX, 2) +
+  //         Math.pow(curr.endY - droneVector.endY, 2)
+  //     );
 
-      return prevDistance < currDistance ? prev : curr;
-    });
-  } else {
-    // find new vectors furthest from monsters
-    bestVector = newVectors.reduce((prev, curr) => {
-      const prevDistance = Math.sqrt(
-        Math.pow(prev.endX - droneVector.endX, 2) +
-          Math.pow(prev.endY - droneVector.endY, 2)
-      );
-      const currDistance = Math.sqrt(
-        Math.pow(curr.endX - droneVector.endX, 2) +
-          Math.pow(curr.endY - droneVector.endY, 2)
-      );
+  //     return prevDistance < currDistance ? prev : curr;
+  //   });
+  // } else {
+  // find new vectors furthest from monsters
+  bestVector = newVectors.reduce((prev, curr) => {
+    const prevDistance = Math.sqrt(
+      Math.pow(prev.endX - droneVector.endX, 2) +
+        Math.pow(prev.endY - droneVector.endY, 2)
+    );
+    const currDistance = Math.sqrt(
+      Math.pow(curr.endX - droneVector.endX, 2) +
+        Math.pow(curr.endY - droneVector.endY, 2)
+    );
 
-      return prevDistance > currDistance ? prev : curr;
-    });
-  }
+    return prevDistance > currDistance ? prev : curr;
+  });
+  // }
 
   debug(`closestVector: ${JSON.stringify(bestVector)}`);
 
@@ -1572,19 +1715,19 @@ while (true) {
     // );
 
     // get angle
-    // tylarsCollisionAvoidance(
-    //   drone,
-    //   droneAction,
-    //   Object.values(gameState.monsters).filter((m) => m.encountered)
-    // );
-
-    newCollisionAvoidance(
+    tylarsCollisionAvoidance(
       drone,
       droneAction,
-      Object.values(gameState.monsters).filter((m) => m.encountered),
-      10,
-      false
+      Object.values(gameState.monsters).filter((m) => m.encountered)
     );
+
+    // newCollisionAvoidance(
+    //   drone,
+    //   droneAction,
+    //   Object.values(gameState.monsters).filter((m) => m.encountered),
+    //   90,
+    //   true
+    // );
 
     slowDownWhenLight(drone, droneAction, 450);
     ensureCoordinatesAreIntegers(droneAction);
