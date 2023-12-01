@@ -630,15 +630,15 @@ class Drone {
         new TurnOffLightIfLowBattery(0),
         new MoveTo(2900, 8000),
         new InitialGoToTop(),
-        new MoveTo(2900, 8000),
+        new MoveTo(900, 8000),
         new InitialGoToTop(),
         new MoveTo(2900, 8000),
         new InitialGoToTop(),
-        new MoveTo(2900, 8000),
+        new MoveTo(900, 8000),
         new InitialGoToTop(),
         new MoveTo(2900, 8000),
         new InitialGoToTop(),
-        new MoveTo(2900, 8000),
+        new MoveTo(900, 8000),
         new InitialGoToTop(),
         new MoveTo(2900, 8000),
         new InitialGoToTop(),
@@ -654,17 +654,17 @@ class Drone {
         new TurnOffLightIfLowBattery(0),
         new MoveTo(6900, 8000),
         new InitialGoToTop(),
-        new MoveTo(6900, 8000),
+        new MoveTo(9500, 8000),
         new InitialGoToTop(),
         new MoveTo(6900, 8000),
         new InitialGoToTop(),
-        new MoveTo(6900, 8000),
+        new MoveTo(9500, 8000),
         new InitialGoToTop(),
         new MoveTo(6900, 8000),
         new InitialGoToTop(),
-        new MoveTo(6900, 8000),
+        new MoveTo(9500, 8000),
         new InitialGoToTop(),
-        new MoveTo(2500, 8000),
+        new MoveTo(6900, 8000),
         new InitialGoToTop(),
         // new ScanCreatures(() => gameState.getZ2UnscannedCreatures()),
         // new ScanCreatures(() => gameState.getZ3UnscannedCreatures()),
@@ -1741,7 +1741,7 @@ while (true) {
       false
     );
 
-    slowDownWhenLight(drone, droneAction, 450);
+    // slowDownWhenLight(drone, droneAction, 450);
     ensureDroneActionIsWithinBounds(droneAction);
     ensureCoordinatesAreIntegers(droneAction);
 
