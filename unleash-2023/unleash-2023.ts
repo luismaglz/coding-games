@@ -633,7 +633,7 @@ class Drone {
         // new InitialGoToTop(),
         new MoveTo(2900, 7500),
         new InitialGoToTop(),
-        new MoveTo(900, 9000),
+        new MoveTo(2900, 9000),
         new InitialGoToTop(),
         new MoveTo(2900, 7500),
         new InitialGoToTop(),
@@ -658,7 +658,7 @@ class Drone {
         new InitialGoToTop(),
         new MoveTo(6900, 7500),
         new InitialGoToTop(),
-        new MoveTo(9500, 9000),
+        new MoveTo(6900, 9000),
         new InitialGoToTop(),
         new MoveTo(6900, 7500),
         new InitialGoToTop(),
@@ -721,7 +721,11 @@ class InitialGoToTop extends DroneAction {
       return false;
     }
 
-    droneAction.targetLocation.x = drone.droneX;
+    if (drone.isLeft) {
+      droneAction.targetLocation.x = 0;
+    } else {
+      droneAction.targetLocation.x = 10000;
+    }
     droneAction.targetLocation.y = 0;
     return true;
   }
@@ -1741,11 +1745,11 @@ while (true) {
       drone,
       droneAction,
       Object.values(gameState.monsters).filter((m) => m.encountered),
-      45,
+      20,
       false
     );
 
-    // slowDownWhenLight(drone, droneAction, 450);
+    slowDownWhenLight(drone, droneAction, 450);
     ensureDroneActionIsWithinBounds(droneAction);
     ensureCoordinatesAreIntegers(droneAction);
 
