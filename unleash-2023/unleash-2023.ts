@@ -602,7 +602,7 @@ class Drone {
 
       this.droneActions = [
         new FlashLightEvery3Ticks(),
-        new TurnOffLightIfLowBattery(),
+        new TurnOffLightIfLowBattery(0),
         new MoveTo(6500, 8000),
         new InitialGoToTop(),
         new ScanCreatures(),
@@ -613,7 +613,7 @@ class Drone {
 
       this.droneActions = [
         new FlashLightEvery3Ticks(),
-        new TurnOffLightIfLowBattery(),
+        new TurnOffLightIfLowBattery(0),
         new MoveTo(2500, 8000),
         new InitialGoToTop(),
         new ScanCreatures(),
@@ -729,6 +729,8 @@ class ScanCreatures extends DroneAction {
     if (radarLoc) {
       setDroneTargetLocationTowardsCreature(droneAction, radarLoc);
       return true;
+    } else {
+      return false;
     }
     droneAction.wait = true;
     return true;
@@ -866,6 +868,31 @@ class DroneActionLol {
   message: string = "";
 }
 
+class SlowDownOnLight extends DroneAction {
+  constructor() {
+    super();
+  }
+
+  runAction(
+    drone: Drone,
+    gameState: GameState,
+    action: DroneActionLol
+  ): boolean {
+    if (action.light) {
+      action.message = "Slow down on light";
+
+      const vector = createDroneVector(drone, action);
+
+      reduceVectorToMaxUnits(vector, 200);
+      action.targetLocation.x = vector.endX;
+      action.targetLocation.y = vector.endY;
+      return true;
+    }
+
+    return false;
+  }
+}
+
 class FlashLightEvery3Ticks extends DroneAction {
   ticks: number = 0;
 
@@ -889,7 +916,7 @@ class FlashLightEvery3Ticks extends DroneAction {
 }
 
 class TurnOffLightIfLowBattery extends DroneAction {
-  constructor() {
+  constructor(private battery: number = 10) {
     super();
   }
 
@@ -898,7 +925,7 @@ class TurnOffLightIfLowBattery extends DroneAction {
     gameState: GameState,
     action: DroneActionLol
   ): boolean {
-    if (drone.battery < 10) {
+    if (drone.battery < this.battery) {
       action.light = false;
     }
 
@@ -1363,7 +1390,8 @@ function newCollisionAvoidance(
   _drone: Drone,
   droneAction: DroneActionLol,
   monsters: Monster[],
-  deg: number
+  deg: number,
+  runAway: boolean = false
 ): void {
   debug(`drone ${drone.droneId}`);
   const maxDroneMoveUnits = 600;
@@ -1435,38 +1463,56 @@ function newCollisionAvoidance(
 
   debug(`newVectors: ${newVectors.length}`);
 
-  // // find new vector closest to our drone vector
-  // const closestVector = newVectors.reduce((prev, curr) => {
-  //   const prevDistance = Math.sqrt(
-  //     Math.pow(prev.endX - droneVector.endX, 2) +
-  //       Math.pow(prev.endY - droneVector.endY, 2)
-  //   );
-  //   const currDistance = Math.sqrt(
-  //     Math.pow(curr.endX - droneVector.endX, 2) +
-  //       Math.pow(curr.endY - droneVector.endY, 2)
-  //   );
+  let bestVector: Vector;
 
-  //   return prevDistance < currDistance ? prev : curr;
-  // });
+  if (!runAway) {
+    // find new vector closest to our drone vector
+    bestVector = newVectors.reduce((prev, curr) => {
+      const prevDistance = Math.sqrt(
+        Math.pow(prev.endX - droneVector.endX, 2) +
+          Math.pow(prev.endY - droneVector.endY, 2)
+      );
+      const currDistance = Math.sqrt(
+        Math.pow(curr.endX - droneVector.endX, 2) +
+          Math.pow(curr.endY - droneVector.endY, 2)
+      );
 
-  // find new vectors furthest from monsters
-  const furthestVectors = newVectors.reduce((prev, curr) => {
-    const prevDistance = Math.sqrt(
-      Math.pow(prev.endX - droneVector.endX, 2) +
-        Math.pow(prev.endY - droneVector.endY, 2)
-    );
-    const currDistance = Math.sqrt(
-      Math.pow(curr.endX - droneVector.endX, 2) +
-        Math.pow(curr.endY - droneVector.endY, 2)
-    );
+      return prevDistance < currDistance ? prev : curr;
+    });
+  } else {
+    // find new vectors furthest from monsters
+    bestVector = newVectors.reduce((prev, curr) => {
+      const prevDistance = Math.sqrt(
+        Math.pow(prev.endX - droneVector.endX, 2) +
+          Math.pow(prev.endY - droneVector.endY, 2)
+      );
+      const currDistance = Math.sqrt(
+        Math.pow(curr.endX - droneVector.endX, 2) +
+          Math.pow(curr.endY - droneVector.endY, 2)
+      );
 
-    return prevDistance > currDistance ? prev : curr;
-  });
+      return prevDistance > currDistance ? prev : curr;
+    });
+  }
 
-  debug(`closestVector: ${JSON.stringify(furthestVectors)}`);
+  debug(`closestVector: ${JSON.stringify(bestVector)}`);
 
-  droneAction.targetLocation.x = furthestVectors.endX;
-  droneAction.targetLocation.y = furthestVectors.endY;
+  droneAction.targetLocation.x = bestVector.endX;
+  droneAction.targetLocation.y = bestVector.endY;
+}
+
+function slowDownWhenLight(
+  drone: Drone,
+  droneAction: DroneActionLol,
+  value: number = 300
+) {
+  if (droneAction.light) {
+    const vector = createDroneVector(drone, droneAction);
+
+    reduceVectorToMaxUnits(vector, value);
+    droneAction.targetLocation.x = vector.endX;
+    droneAction.targetLocation.y = vector.endY;
+  }
 }
 
 function getVectorFinalPosition(vector: Vector): { x: number; y: number } {
@@ -1536,8 +1582,12 @@ while (true) {
       drone,
       droneAction,
       Object.values(gameState.monsters).filter((m) => m.encountered),
-      45
+      10,
+      false
     );
+
+    slowDownWhenLight(drone, droneAction, 450);
+    ensureCoordinatesAreIntegers(droneAction);
 
     if (droneAction.wait) {
       drone.wait(droneAction.light, droneAction.message);
