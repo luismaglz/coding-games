@@ -615,7 +615,7 @@ class Drone {
         new FlashLightEvery3Ticks(),
         new TurnOffLightIfLowBattery(),
         new MoveTo(5000, 5000),
-        new GoToTop(false, 4),
+        new GoToTop(false, 3),
         new ScanCreatures(),
         new GoToTop(true),
       ];
@@ -1411,8 +1411,22 @@ function newCollisionAvoidance(
 
   debug(`newVectors: ${newVectors.length}`);
 
-  // find new vector closest to our drone vector
-  const closestVector = newVectors.reduce((prev, curr) => {
+  // // find new vector closest to our drone vector
+  // const closestVector = newVectors.reduce((prev, curr) => {
+  //   const prevDistance = Math.sqrt(
+  //     Math.pow(prev.endX - droneVector.endX, 2) +
+  //       Math.pow(prev.endY - droneVector.endY, 2)
+  //   );
+  //   const currDistance = Math.sqrt(
+  //     Math.pow(curr.endX - droneVector.endX, 2) +
+  //       Math.pow(curr.endY - droneVector.endY, 2)
+  //   );
+
+  //   return prevDistance < currDistance ? prev : curr;
+  // });
+
+  // find new vectors furthest from monsters
+  const furthestVectors = newVectors.reduce((prev, curr) => {
     const prevDistance = Math.sqrt(
       Math.pow(prev.endX - droneVector.endX, 2) +
         Math.pow(prev.endY - droneVector.endY, 2)
@@ -1422,13 +1436,13 @@ function newCollisionAvoidance(
         Math.pow(curr.endY - droneVector.endY, 2)
     );
 
-    return prevDistance < currDistance ? prev : curr;
+    return prevDistance > currDistance ? prev : curr;
   });
 
-  debug(`closestVector: ${JSON.stringify(closestVector)}`);
+  debug(`closestVector: ${JSON.stringify(furthestVectors)}`);
 
-  droneAction.targetLocation.x = closestVector.endX;
-  droneAction.targetLocation.y = closestVector.endY;
+  droneAction.targetLocation.x = furthestVectors.endX;
+  droneAction.targetLocation.y = furthestVectors.endY;
 }
 
 function getVectorFinalPosition(vector: Vector): { x: number; y: number } {
@@ -1498,7 +1512,7 @@ while (true) {
       drone,
       droneAction,
       Object.values(gameState.monsters).filter((m) => m.encountered),
-      10
+      45
     );
 
     if (droneAction.wait) {
