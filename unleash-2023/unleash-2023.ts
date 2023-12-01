@@ -603,10 +603,10 @@ class Drone {
       this.droneActions = [
         new FlashLightEvery3Ticks(),
         new TurnOffLightIfLowBattery(),
-        new MoveTo(5000, 5000),
-        new GoToTop(false, 3),
+        new MoveTo(6500, 8000),
+        new InitialGoToTop(),
         new ScanCreatures(),
-        new GoToTop(true),
+        new GoToTop(true, 2),
       ];
     } else {
       this.isLeft = false;
@@ -614,10 +614,10 @@ class Drone {
       this.droneActions = [
         new FlashLightEvery3Ticks(),
         new TurnOffLightIfLowBattery(),
-        new MoveTo(5000, 5000),
-        new GoToTop(false, 3),
+        new MoveTo(2500, 8000),
+        new InitialGoToTop(),
         new ScanCreatures(),
-        new GoToTop(true),
+        new GoToTop(true, 2),
       ];
     }
   }
@@ -649,6 +649,29 @@ abstract class DroneAction {
   ): boolean;
 }
 
+class InitialGoToTop extends DroneAction {
+  constructor() {
+    super();
+  }
+
+  runAction(
+    drone: Drone,
+    gameState: GameState,
+    droneAction: DroneActionLol
+  ): boolean {
+    debug(`InitialGoToTop`);
+
+    if (drone.droneY < 500) {
+      this.completed = true;
+      return false;
+    }
+
+    droneAction.targetLocation.x = drone.droneX;
+    droneAction.targetLocation.y = 0;
+    return true;
+  }
+}
+
 class GoToTop extends DroneAction {
   runAction(
     drone: Drone,
@@ -661,6 +684,7 @@ class GoToTop extends DroneAction {
       droneAction.targetLocation.y = 0;
       return true;
     }
+
     if (drone.scans.length >= this.max) {
       droneAction.targetLocation.x = drone.droneX;
       droneAction.targetLocation.y = 0;
