@@ -677,25 +677,8 @@ class DoZone1Action extends DroneAction {
 
     var radarLoc = loc?.radar;
 
-    if (radarLoc === "TL") {
-      droneAction.targetLocation.x = drone.droneX - 600;
-      droneAction.targetLocation.y = drone.droneY - 600;
-
-      return true;
-    } else if (radarLoc === "TR") {
-      droneAction.targetLocation.x = drone.droneX + 600;
-      droneAction.targetLocation.y = drone.droneY - 600;
-
-      return true;
-    } else if (radarLoc === "BL") {
-      droneAction.targetLocation.x = drone.droneX - 600;
-      droneAction.targetLocation.y = drone.droneY + 600;
-
-      return true;
-    } else if (radarLoc === "BR") {
-      droneAction.targetLocation.x = drone.droneX + 600;
-      droneAction.targetLocation.y = drone.droneY + 600;
-
+    if (radarLoc) {
+      setDroneTargetLocationTowardsCreature(droneAction, radarLoc);
       return true;
     }
 
@@ -730,25 +713,8 @@ class DoZone2Action extends DroneAction {
 
     var radarLoc = loc?.radar;
 
-    if (radarLoc === "TL") {
-      droneAction.targetLocation.x = drone.droneX - 600;
-      droneAction.targetLocation.y = drone.droneY - 600;
-
-      return true;
-    } else if (radarLoc === "TR") {
-      droneAction.targetLocation.x = drone.droneX + 600;
-      droneAction.targetLocation.y = drone.droneY - 600;
-
-      return true;
-    } else if (radarLoc === "BL") {
-      droneAction.targetLocation.x = drone.droneX - 600;
-      droneAction.targetLocation.y = drone.droneY + 600;
-
-      return true;
-    } else if (radarLoc === "BR") {
-      droneAction.targetLocation.x = drone.droneX + 600;
-      droneAction.targetLocation.y = drone.droneY + 600;
-
+    if (radarLoc) {
+      setDroneTargetLocationTowardsCreature(droneAction, radarLoc);
       return true;
     }
 
@@ -783,25 +749,8 @@ class DoZone3Action extends DroneAction {
 
     var radarLoc = loc?.radar;
 
-    if (radarLoc === "TL") {
-      droneAction.targetLocation.x = drone.droneX - 600;
-      droneAction.targetLocation.y = drone.droneY - 600;
-
-      return true;
-    } else if (radarLoc === "TR") {
-      droneAction.targetLocation.x = drone.droneX + 600;
-      droneAction.targetLocation.y = drone.droneY - 600;
-
-      return true;
-    } else if (radarLoc === "BL") {
-      droneAction.targetLocation.x = drone.droneX - 600;
-      droneAction.targetLocation.y = drone.droneY + 600;
-
-      return true;
-    } else if (radarLoc === "BR") {
-      droneAction.targetLocation.x = drone.droneX + 600;
-      droneAction.targetLocation.y = drone.droneY + 600;
-
+    if (radarLoc) {
+      setDroneTargetLocationTowardsCreature(droneAction, radarLoc);
       return true;
     }
 
