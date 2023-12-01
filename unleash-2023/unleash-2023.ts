@@ -215,11 +215,8 @@ class GameState {
   }
 
   readGameState() {
-    // this.readCreatureCount();
     this.myScannedCreatures = [];
     this.foeScannedCreatures = [];
-    // this.myDrones = [];
-    // this.foeDrones = [];
     this.visibleCreatures = [];
     this.radarBlips = [];
 
@@ -524,22 +521,7 @@ class Drone {
     this.scans = [];
   }
 
-  droneActions: DroneAction[] = [
-    // new BailIfMonster(),
-    // new TurnOnLightActionAt(3500, -500),
-    // new TurnOnLightActionAt(6500, -500),
-    // new TurnOnLightActionAt(8500, -500),
-    // new TurnOnLightActionAt(8500, 500),
-    // new TurnOnLightActionAt(6500, 500),
-    // new TurnOnLightActionAt(3500, 500),
-    // new GoToTop(),
-    // new InitialSinkAction(),
-    // new DoZone1Action(),
-    // new DoZone2Action(),
-    // new DoZone3Action(),
-    // new GoToTop(true),
-    // new DoNothingAction(),
-  ];
+  droneActions: DroneAction[] = [];
 
   constructor(
     droneId: number,
