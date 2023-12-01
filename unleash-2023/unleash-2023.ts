@@ -150,6 +150,25 @@ class GameState {
     return monstersVisible.length > 0;
   }
 
+  getUnscannedCreatures(): number[] {
+    const droneScans = this.myDrones.map((d) => d.scans).flat();
+    const unscanned = this.creatures
+      .filter((c) => c.type !== -1)
+      .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
+      .filter((c) => !droneScans.includes(c.creatureId))
+      .map((c) => c.creatureId);
+
+    // sort by weight
+    const sorted = unscanned.sort((a, b) => {
+      const creatureA = this.creatureDic[a];
+      const creatureB = this.creatureDic[b];
+
+      return creatureB.weight - creatureA.weight;
+    });
+
+    return sorted;
+  }
+
   getZ1UnscannedCreatures(): number[] {
     const droneScans = this.myDrones.map((d) => d.scans).flat();
     return this.creatures
@@ -234,6 +253,7 @@ class GameState {
     });
 
     this.removeClaimedFromScans();
+    this.updateCreatureWeights();
     this.targetFish = [];
 
     this.turns++;
@@ -309,6 +329,41 @@ class GameState {
         this.monsters[creatureId] = new Monster(creatureId, 0, 0, 0, 0);
       }
     }
+  }
+
+  private updateCreatureWeights() {
+    const scannedCreatures = this.myScannedCreatures;
+    const creaturesInTank = this.myDrones.map((d) => d.scans).flat();
+
+    const allScannedCreatureIds = [...scannedCreatures, ...creaturesInTank];
+    const allScannedCreatures = allScannedCreatureIds.map(
+      (c) => this.creatureDic[c]
+    );
+
+    this.creatures.forEach((c) => {
+      // check if we have a scanned creature of the same type
+
+      const scannedCreature = allScannedCreatures.find(
+        (s) => s.type === c.type
+      );
+
+      // check if we have a scanned creature of the same color
+
+      const scannedCreatureColor = allScannedCreatures.find(
+        (s) => s.color === c.color
+      );
+
+      const hasSameTypeScanned = !!scannedCreature;
+      const hasSameColorScanned = !!scannedCreatureColor;
+
+      if (hasSameTypeScanned && hasSameColorScanned) {
+        c.weight = 5;
+      } else if (hasSameTypeScanned) {
+        c.weight = 2;
+      } else if (hasSameColorScanned) {
+        c.weight = 1;
+      }
+    });
   }
 
   private readMyScore() {
@@ -508,9 +563,7 @@ class Drone {
         new TurnOffLightIfLowBattery(),
         new MoveTo(5000, 9000),
         new GoToTop(false, 3),
-        new DoZone3Action(),
-        new DoZone2Action(),
-        new DoZone1Action(),
+        new ScanCreatures(),
         new GoToTop(true),
       ];
     } else {
@@ -521,9 +574,7 @@ class Drone {
         new TurnOffLightIfLowBattery(),
         new MoveTo(5000, 9000),
         new GoToTop(false, 4),
-        new DoZone1Action(),
-        new DoZone2Action(),
-        new DoZone3Action(),
+        new ScanCreatures(),
         new GoToTop(true),
       ];
     }
@@ -581,6 +632,40 @@ class GoToTop extends DroneAction {
     private max = 2
   ) {
     super();
+  }
+}
+
+class ScanCreatures extends DroneAction {
+  constructor() {
+    super();
+  }
+
+  runAction(
+    drone: Drone,
+    gameState: GameState,
+    droneAction: DroneActionLol
+  ): boolean {
+    debug("ScanCreatures");
+
+    var unscannedFish = gameState.getUnscannedCreatures();
+
+    if (unscannedFish.length === 0) {
+      this.completed = true;
+      return false;
+    }
+
+    var firstFish = unscannedFish[0];
+    gameState.targetFish.push(firstFish);
+
+    var loc = gameState.radarBlips.find((r) => r.creatureId === firstFish);
+    var radarLoc = loc?.radar;
+
+    if (radarLoc) {
+      setDroneTargetLocationTowardsCreature(droneAction, radarLoc);
+      return true;
+    }
+    droneAction.wait = true;
+    return true;
   }
 }
 
@@ -838,6 +923,25 @@ interface Vector {
   endX: number;
   startY: number;
   endY: number;
+}
+
+function setDroneTargetLocationTowardsCreature(
+  droneAction: DroneActionLol,
+  radarLoc: "TL" | "TR" | "BL" | "BR"
+) {
+  if (radarLoc === "TL") {
+    droneAction.targetLocation.x = drone.droneX - 600;
+    droneAction.targetLocation.y = drone.droneY - 600;
+  } else if (radarLoc === "TR") {
+    droneAction.targetLocation.x = drone.droneX + 600;
+    droneAction.targetLocation.y = drone.droneY - 600;
+  } else if (radarLoc === "BL") {
+    droneAction.targetLocation.x = drone.droneX - 600;
+    droneAction.targetLocation.y = drone.droneY + 600;
+  } else if (radarLoc === "BR") {
+    droneAction.targetLocation.x = drone.droneX + 600;
+    droneAction.targetLocation.y = drone.droneY + 600;
+  }
 }
 
 function reduceVectorToMaxUnits(vector: Vector, maxUnits: number): Vector {
@@ -1212,6 +1316,8 @@ class Creature {
   mScan: boolean = false;
   fScan: boolean = false;
   zone: FishZone;
+  weight: number = 0;
+  inGame: boolean = true;
   constructor(creatureId: number, color: number, type: number) {
     this.creatureId = creatureId;
     this.color = color;
@@ -1222,11 +1328,11 @@ class Creature {
 class RadarBlip {
   droneId: number;
   creatureId: number;
-  radar: string;
+  radar: "TL" | "TR" | "BL" | "BR";
   constructor(droneId: number, creatureId: number, radar: string) {
     this.droneId = droneId;
     this.creatureId = creatureId;
-    this.radar = radar;
+    this.radar = radar as "TL" | "TR" | "BL" | "BR";
   }
 }
 
