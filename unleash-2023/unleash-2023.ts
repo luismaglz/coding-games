@@ -195,7 +195,7 @@ class GameState {
     debug(`visibleCreatures ${JSON.stringify(this.visibleCreatures)}`);
     // debug(`radarBlips ${JSON.stringify(this.radarBlips)}`);
     debug(`monsters ${JSON.stringify(this.monsters)}`);
-    debug(`badGuys ${JSON.stringify(this.monsters)}`);
+    // debug(`badGuys ${JSON.stringify(this.monsters)}`);
   }
 
   isMonsterWithinDroneRange(drone: Drone) {
@@ -1048,7 +1048,7 @@ function avoidMonsterLastDitchEffort(
   // WE BAD
 
   // pick a new target within 600 units that is not within 500 units of a monster last position
-  const avoidanceVectors = createDroneVectors(drone);
+  const avoidanceVectors = createDroneVectors(drone, 15);
   const avoidanceVectorsThatWontKillUs = avoidanceVectors.filter((v) => {
     const vectorLastPosition = getVectorLastPosition(v);
     // if vector las position is within 500 units of a monster last position, don't use it
@@ -1088,10 +1088,15 @@ function getVectorLastPosition(vector: Vector): { x: number; y: number } {
   };
 }
 
-function createDroneVectors(drone: Drone): Vector[] {
+function createDroneVectors(drone: Drone, deg: number): Vector[] {
   const maxDroneMoveUnits = 600;
-  // create a vector for 8 directions, 45 degrees apart
-  const degs = [0, 45, 90, 135, 180, 225, 270, 315];
+
+  // create a vector for n directions deg appart
+  const degs: number[] = [];
+  for (let x = 0; x < 360; x += deg) {
+    degs.push(x);
+  }
+
   const vectors = degs.map((d) => {
     const vector = {
       startX: drone.droneX,
@@ -1129,7 +1134,7 @@ function ensureVectorIsWithinBounds(vector: Vector): Vector {
 // find out if any bad guy locations are going to insect with our drone's location
 // find out if two vectors are going to intersect
 function updateDroneTargetAvoidingMonsters(
-  Drone: Drone,
+  _drone: Drone,
   droneTarget: DroneActionLol,
   monsters: Monster[]
 ) {
@@ -1137,7 +1142,7 @@ function updateDroneTargetAvoidingMonsters(
   const areaAroundMonsterToAvoid = 500;
 
   // initial drone vector
-  let droneVector = createDroneVector(Drone, droneTarget, maxDroneMoveUnits);
+  let droneVector = createDroneVector(_drone, droneTarget, maxDroneMoveUnits);
 
   const monsterVectors = monsters.map((m) => m.getVector());
   const vectorsWithCollisions = monsterVectors.filter((m) => {
@@ -1275,6 +1280,172 @@ function ensureCoordinatesAreIntegers(droneTarget: DroneActionLol) {
   droneTarget.targetLocation.y = Math.floor(droneTarget.targetLocation.y);
 }
 
+function tylarsCollisionAvoidance(
+  drone: Drone,
+  droneAction: DroneActionLol,
+  monsters: Monster[]
+) {
+  var startx = drone.droneX;
+  var endx = droneAction.targetLocation.x;
+  var starty = drone.droneY;
+  var endy = droneAction.targetLocation.y;
+
+  var angle = (Math.atan2(endy - starty, endx - startx) * 180) / Math.PI;
+
+  debug(
+    `Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${droneAction.targetLocation.x}, ${droneAction.targetLocation.y} at angle ${angle}`
+  );
+
+  var distance = 600;
+
+  var distX = startx + distance * Math.cos((angle * Math.PI) / 180);
+  var distY = starty + distance * Math.sin((angle * Math.PI) / 180);
+
+  debug(
+    `Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${distX}, ${distY} at angle ${angle}`
+  );
+
+  for (const monst of Object.values(gameState.monsters)) {
+    // if monster is within 1000 units of our drone
+    if (
+      Math.abs(monst.creatureX - drone.droneX) < 1000 &&
+      Math.abs(monst.creatureY - drone.droneY) < 1000
+    ) {
+      debug(
+        `fish in our range! ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${monst.creatureX}, ${monst.creatureY} at angle ${angle}`
+      );
+
+      // if monster is coming our direction
+      if (
+        (drone.droneX < monst.creatureX && monst.creatureVx < 0) ||
+        (drone.droneY < monst.creatureY && monst.creatureVy < 0) ||
+        (drone.droneX > monst.creatureX && monst.creatureVx > 0) ||
+        (drone.droneY > monst.creatureY && monst.creatureVy > 0)
+      ) {
+        distX += monst.creatureVx;
+        distY += monst.creatureVy;
+        debug(`Diverting x: ${distX} y: ${distY}`);
+      }
+    }
+  }
+
+  droneAction.targetLocation.x = distX;
+  droneAction.targetLocation.y = distY;
+  ensureCoordinatesAreIntegers(droneAction);
+  return;
+}
+
+function newCollisionAvoidance(
+  _drone: Drone,
+  droneAction: DroneActionLol,
+  monsters: Monster[],
+  deg: number
+): void {
+  debug(`drone ${drone.droneId}`);
+  const maxDroneMoveUnits = 600;
+  const areaAroundMonsterToAvoid = 900;
+
+  // initial drone vector
+  let droneVector = createDroneVector(_drone, droneAction, maxDroneMoveUnits);
+
+  const monsterVectors = monsters.map((m) => m.getVector());
+
+  // check that we will not end up within 500 units of a monster
+  const monstersFinalPositions = monsters.map((m) => m.getEndPosition());
+  const myFinalPosition = {
+    x: droneVector.endX,
+    y: droneVector.endY,
+  };
+
+  // check if we have any final positions within 500 units of a monster
+  const monstersWithin500Units = monstersFinalPositions.filter((m) => {
+    const distance = Math.sqrt(
+      Math.pow(m.x - myFinalPosition.x, 2) +
+        Math.pow(m.y - myFinalPosition.y, 2)
+    );
+
+    return distance < areaAroundMonsterToAvoid;
+  });
+
+  const vectorsWithCollisions = monsterVectors.filter((m) => {
+    const intersection = getIntersection(droneVector, m);
+    return !!intersection;
+  });
+
+  debug(`vectorsWithCollisions: ${vectorsWithCollisions.length}`);
+  debug(`monstersWithin500Units: ${monstersWithin500Units.length}`);
+
+  if (
+    vectorsWithCollisions.length === 0 &&
+    monstersWithin500Units.length === 0
+  ) {
+    return;
+  }
+
+  const newVectors = createDroneVectors(_drone, deg).filter((myNewVector) => {
+    // remove vectors that will collide with monsters
+    const vectorsWithCollisions = monsterVectors.filter((monstersVector) => {
+      const intersection = getIntersection(myNewVector, monstersVector);
+
+      const myNewFinalPosition = getVectorFinalPosition(myNewVector);
+      const monstersFinalPosition = getVectorFinalPosition(monstersVector);
+
+      // if our new vector will end up within 500 units of a monster, don't use it
+      const distance = Math.sqrt(
+        Math.pow(monstersFinalPosition.x - myNewFinalPosition.x, 2) +
+          Math.pow(monstersFinalPosition.y - myNewFinalPosition.y, 2)
+      );
+
+      return distance < areaAroundMonsterToAvoid;
+
+      // return !!intersection;
+    });
+
+    return vectorsWithCollisions.length === 0;
+  });
+
+  // we screwed
+  if (newVectors.length === 0) {
+    return;
+  }
+
+  debug(`newVectors: ${newVectors.length}`);
+
+  // find new vector closest to our drone vector
+  const closestVector = newVectors.reduce((prev, curr) => {
+    const prevDistance = Math.sqrt(
+      Math.pow(prev.endX - droneVector.endX, 2) +
+        Math.pow(prev.endY - droneVector.endY, 2)
+    );
+    const currDistance = Math.sqrt(
+      Math.pow(curr.endX - droneVector.endX, 2) +
+        Math.pow(curr.endY - droneVector.endY, 2)
+    );
+
+    return prevDistance < currDistance ? prev : curr;
+  });
+
+  debug(`closestVector: ${JSON.stringify(closestVector)}`);
+
+  droneAction.targetLocation.x = closestVector.endX;
+  droneAction.targetLocation.y = closestVector.endY;
+}
+
+function getVectorFinalPosition(vector: Vector): { x: number; y: number } {
+  const vectorLength = Math.sqrt(
+    Math.pow(vector.endX - vector.startX, 2) +
+      Math.pow(vector.endY - vector.startY, 2)
+  );
+
+  const vectorUnitX = (vector.endX - vector.startX) / vectorLength;
+  const vectorUnitY = (vector.endY - vector.startY) / vectorLength;
+
+  return {
+    x: vector.startX + vectorUnitX * vectorLength,
+    y: vector.startY + vectorUnitY * vectorLength,
+  };
+}
+
 const gameState = new GameState();
 gameState.readCreatureCount();
 
@@ -1317,53 +1488,18 @@ while (true) {
     // );
 
     // get angle
-    var startx = drone.droneX;
-    var endx = droneAction.targetLocation.x;
-    var starty = drone.droneY;
-    var endy = droneAction.targetLocation.y;
+    // tylarsCollisionAvoidance(
+    //   drone,
+    //   droneAction,
+    //   Object.values(gameState.monsters).filter((m) => m.encountered)
+    // );
 
-    var angle = (Math.atan2(endy - starty, endx - startx) * 180) / Math.PI;
-
-    debug(
-      `Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${droneAction.targetLocation.x}, ${droneAction.targetLocation.y} at angle ${angle}`
+    newCollisionAvoidance(
+      drone,
+      droneAction,
+      Object.values(gameState.monsters).filter((m) => m.encountered),
+      10
     );
-
-    var distance = 600;
-
-    var distX = startx + distance * Math.cos((angle * Math.PI) / 180);
-    var distY = starty + distance * Math.sin((angle * Math.PI) / 180);
-
-    debug(
-      `Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${distX}, ${distY} at angle ${angle}`
-    );
-
-    for (const monst of Object.values(gameState.monsters)) {
-      // if monster is within 1000 units of our drone
-      if (
-        Math.abs(monst.creatureX - drone.droneX) < 1000 &&
-        Math.abs(monst.creatureY - drone.droneY) < 1000
-      ) {
-        debug(
-          `fish in our range! ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${monst.creatureX}, ${monst.creatureY} at angle ${angle}`
-        );
-
-        // if monster is coming our direction
-        if (
-          (drone.droneX < monst.creatureX && monst.creatureVx < 0) ||
-          (drone.droneY < monst.creatureY && monst.creatureVy < 0) ||
-          (drone.droneX > monst.creatureX && monst.creatureVx > 0) ||
-          (drone.droneY > monst.creatureY && monst.creatureVy > 0)
-        ) {
-          distX += monst.creatureVx;
-          distY += monst.creatureVy;
-          debug(`Diverting x: ${distX} y: ${distY}`);
-        }
-      }
-    }
-
-    droneAction.targetLocation.x = distX;
-    droneAction.targetLocation.y = distY;
-    ensureCoordinatesAreIntegers(droneAction);
 
     if (droneAction.wait) {
       drone.wait(droneAction.light, droneAction.message);
