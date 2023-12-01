@@ -50,6 +50,45 @@ declare function readline(): string;
 declare function print(value: string): void;
 declare function printErr(message: string): void;
 
+class Monster {
+  creatureId: number;
+  creatureX: number;
+  creatureY: number;
+  creatureVx: number;
+  creatureVy: number;
+  encountered: boolean = false;
+
+  constructor(
+    creatureId: number,
+    creatureX: number,
+    creatureY: number,
+    creatureVx: number,
+    creatureVy: number
+  ) {
+    this.creatureId = creatureId;
+    this.creatureX = creatureX;
+    this.creatureY = creatureY;
+    this.creatureVx = creatureVx;
+    this.creatureVy = creatureVy;
+  }
+
+  getVector(): Vector {
+    return {
+      startX: this.creatureX,
+      endX: this.creatureX + this.creatureVx,
+      startY: this.creatureY,
+      endY: this.creatureY + this.creatureVy,
+    };
+  }
+
+  getEndPosition(): { x: number; y: number } {
+    return {
+      x: this.creatureX + this.creatureVx,
+      y: this.creatureY + this.creatureVy,
+    };
+  }
+}
+
 class GameState {
   creatureCount: number;
   creatures: Creature[] = [];
@@ -69,10 +108,9 @@ class GameState {
   visibleCreaturesDic: { [key: string]: VisibleCreature } = {};
   radarBlips: RadarBlip[];
   targetFish: number[];
-  monsters: number[];
   turns: number = 0;
 
-  lastKnownMonsterLocations: { [key: number]: VisibleCreature } = {};
+  monsters: { [key: number]: Monster } = {};
 
   constructor() {}
 
@@ -97,7 +135,7 @@ class GameState {
     debug(`visibleCreatures ${JSON.stringify(this.visibleCreatures)}`);
     // debug(`radarBlips ${JSON.stringify(this.radarBlips)}`);
     debug(`monsters ${JSON.stringify(this.monsters)}`);
-    debug(`badGuys ${JSON.stringify(this.lastKnownMonsterLocations)}`);
+    debug(`badGuys ${JSON.stringify(this.monsters)}`);
   }
 
   isMonsterWithinDroneRange(drone: Drone) {
@@ -175,6 +213,7 @@ class GameState {
     this.readDroneScans();
     this.readVisibleCreatures();
     this.readRadarBlips();
+    this.updateMonsterFromVisibleCreatures();
 
     // update fishs with zone and scans
     this.creatures.forEach((c) => {
@@ -197,25 +236,10 @@ class GameState {
     this.removeClaimedFromScans();
     this.targetFish = [];
 
-    const monsters = this.creatures
-      .filter((c) => c.type === -1)
-      .map((c) => c.creatureId);
-
-    // find monsters in visible creatures
-    this.monsters = this.visibleCreatures
-      .filter((c) => monsters.includes(c.creatureId))
-      .map((c) => c.creatureId);
-
-    this.visibleCreatures
-      .filter((c) => this.creatureDic[c.creatureId].type === -1)
-      .forEach((monster) => {
-        this.lastKnownMonsterLocations[monster.creatureId] = monster;
-      });
-
     this.turns++;
   }
 
-  removeClaimedFromScans() {
+  private removeClaimedFromScans() {
     const meClaimed = this.creatures
       .filter((c) => c.mScan)
       .map((c) => c.creatureId);
@@ -231,6 +255,47 @@ class GameState {
     });
   }
 
+  updateMonsterFromVisibleCreatures() {
+    const visibleMonsters = this.visibleCreatures.filter(
+      (c) => this.creatureDic[c.creatureId].type === -1
+    );
+
+    visibleMonsters.forEach((monster) => {
+      this.monsters[monster.creatureId].creatureVx = monster.creatureVx;
+      this.monsters[monster.creatureId].creatureVy = monster.creatureVy;
+      this.monsters[monster.creatureId].creatureX = monster.creatureX;
+      this.monsters[monster.creatureId].creatureY = monster.creatureY;
+      this.monsters[monster.creatureId].encountered = true;
+    });
+
+    // Only estimate detected monsters
+    const nonVisibleMonsters = Object.values(this.monsters).filter(
+      (m) => !visibleMonsters.includes(m) && m.encountered
+    );
+
+    this.estimateMonsterPosition(nonVisibleMonsters);
+  }
+
+  estimateMonsterPosition(monsters: Monster[]) {
+    // update the monsters vector based on the last known position and velocity
+    // if the monster reaches and edge the velocity is reversed
+
+    // the boundaries are 0, 1000
+
+    monsters.forEach((m) => {
+      if (m.creatureX === 0 || m.creatureX === 10000) {
+        m.creatureVx = m.creatureVx * -1;
+      }
+
+      if (m.creatureY === 0 || m.creatureY === 10000) {
+        m.creatureVy = m.creatureVy * -1;
+      }
+
+      m.creatureX = m.creatureX + m.creatureVx;
+      m.creatureY = m.creatureY + m.creatureVy;
+    });
+  }
+
   readCreatureCount() {
     const creatureCount: number = parseInt(readline());
     for (let i = 0; i < creatureCount; i++) {
@@ -240,6 +305,9 @@ class GameState {
       const type: number = parseInt(inputs[2]);
       this.creatures.push(new Creature(creatureId, color, type));
       this.creatureDic[creatureId] = new Creature(creatureId, color, type);
+      if (type === -1) {
+        this.monsters[creatureId] = new Monster(creatureId, 0, 0, 0, 0);
+      }
     }
   }
 
@@ -474,64 +542,6 @@ class Drone {
   }
 }
 
-class VisibleCreature {
-  creatureId: number;
-  creatureX: number;
-  creatureY: number;
-  creatureVx: number;
-  creatureVy: number;
-  constructor(
-    creatureId: number,
-    creatureX: number,
-    creatureY: number,
-    creatureVx: number,
-    creatureVy: number
-  ) {
-    this.creatureId = creatureId;
-    this.creatureX = creatureX;
-    this.creatureY = creatureY;
-    this.creatureVx = creatureVx;
-    this.creatureVy = creatureVy;
-  }
-}
-
-class Creature {
-  creatureId: number;
-  color: number;
-  type: number;
-  mScan: boolean = false;
-  fScan: boolean = false;
-  zone: FishZone;
-  constructor(creatureId: number, color: number, type: number) {
-    this.creatureId = creatureId;
-    this.color = color;
-    this.type = type;
-  }
-}
-
-class RadarBlip {
-  droneId: number;
-  creatureId: number;
-  radar: string;
-  constructor(droneId: number, creatureId: number, radar: string) {
-    this.droneId = droneId;
-    this.creatureId = creatureId;
-    this.radar = radar;
-  }
-}
-
-class FishZones {
-  zone1: FishZone = { id: 1, Ymin: 2500, Ymax: 500 };
-  zone2: FishZone = { id: 2, Ymin: 5000, Ymax: 7500 };
-  zone3: FishZone = { id: 3, Ymin: 7500, Ymax: 10000 };
-}
-
-class FishTypes {
-  Fish1 = 0;
-  Fish2 = 1;
-  Fish3 = 2;
-}
-
 abstract class DroneAction {
   completed: boolean;
 
@@ -545,43 +555,6 @@ abstract class DroneAction {
     action: DroneActionLol
   ): boolean;
 }
-
-// class InitialSinkAction extends DroneAction {
-//   constructor() {
-//     super();
-//   }
-
-//   runAction(drone: Drone): boolean {
-//     debug("InitialSinkAction");
-
-//     if (drone.droneY >= 2500) {
-//       this.completed = true;
-//       // action complete. do not stop processing other actions
-//       return false;
-//     }
-
-//     if (drone.droneY < 2500) {
-//       drone.move(drone.droneX, 10000, false);
-//       return true;
-//     }
-
-//     return false;
-//   }
-// }
-// class DoNothingAction extends DroneAction {
-//   constructor() {
-//     super();
-//   }
-
-//   runAction(drone: Drone): boolean {
-//     debug("DoNothingAction");
-
-//     drone.wait(false, "Waiting cause nothing else was provided");
-//     return true;
-//   }
-// }
-
-// //sadas
 
 class GoToTop extends DroneAction {
   runAction(
@@ -610,78 +583,6 @@ class GoToTop extends DroneAction {
     super();
   }
 }
-
-// class GoToTopForce extends DroneAction {
-//   runAction(drone: Drone, gameState: GameState): boolean {
-//     debug("GoToTops");
-//     drone.move(drone.droneX, 0, false);
-//     return true;
-//   }
-// }
-
-// class TurnOnLightAction extends DroneAction {
-//   constructor() {
-//     super();
-//   }
-
-//   runAction(drone: Drone, gameState: GameState): boolean {
-//     debug("TurnOnLightAction");
-
-//     if (drone.battery < 10) {
-//       drone.wait(true, "Waiting cause battery is low");
-//       return true;
-//     }
-
-//     return false;
-//   }
-// }
-
-// class BailIfMonster extends DroneAction {
-//   constructor() {
-//     super();
-//   }
-
-//   runAction(drone: Drone, gameState: GameState): boolean {
-//     debug("BailIfMonster");
-
-//     if (gameState.isMonsterWithinDroneRange(drone)) {
-//       drone.move(drone.droneX, 0, false);
-//       return false;
-//     }
-
-//     return false;
-//   }
-// }
-
-// class TurnOnLightActionAt extends DroneAction {
-//   constructor(
-//     public y: number,
-//     public xoffset: number = 0
-//   ) {
-//     super();
-//   }
-
-//   runAction(drone: Drone, gameState: GameState): boolean {
-//     debug(`TurnOnLightActionAt ${this.y}`);
-
-//     const shouldTurnOnLight = !gameState.isMonsterWithinDroneRange(drone);
-
-//     if (Math.abs(drone.droneY - this.y) < 100) {
-//       drone.wait(shouldTurnOnLight, "Hit marker, light on baby");
-//       this.completed = true;
-//       return true;
-//     }
-
-//     // move each drone to the center of it's lane.
-//     drone.move(
-//       (drone.isLeft ? 2500 : 6500) - this.xoffset,
-//       this.y,
-//       false,
-//       "moving to light on"
-//     );
-//     return true;
-//   }
-// }
 
 class DoZone1Action extends DroneAction {
   constructor() {
@@ -954,54 +855,155 @@ function reduceVectorToMaxUnits(vector: Vector, maxUnits: number): Vector {
   return vector;
 }
 
-// find out if any bad guy locations are going to insect with our drone's location
-// find out if two vectors are going to intersect
-function moveDroneToTargetWhileAvoidingCreature(
-  Drone: Drone,
-  droneTarget: DroneActionLol,
-  creature: VisibleCreature[]
-) {
-  const maxDroneMoveUnits = 600;
-  const areaCloseToCreatureToAvoid = 500;
-
-  let droneVector = {
-    startX: Drone.droneX,
-    endX: droneTarget.targetLocation.x,
-    startY: Drone.droneY,
-    endY: droneTarget.targetLocation.y,
+function createDroneVector(
+  drone: Drone,
+  droneAction: DroneActionLol,
+  maxDroneMoveUnits: number = 600
+): Vector {
+  const vector = {
+    startX: drone.droneX,
+    endX: droneAction.targetLocation.x,
+    startY: drone.droneY,
+    endY: droneAction.targetLocation.y,
   };
 
   // reduce drone vector to max move units
-  droneVector = reduceVectorToMaxUnits(droneVector, maxDroneMoveUnits);
+  return reduceVectorToMaxUnits(vector, maxDroneMoveUnits);
+}
 
-  const creatureVectors = creature.map((c) => {
-    return {
-      startX: c.creatureX - areaCloseToCreatureToAvoid,
-      endX: c.creatureX + c.creatureVx + areaCloseToCreatureToAvoid,
-      startY: c.creatureY - areaCloseToCreatureToAvoid,
-      endY: c.creatureY + c.creatureVy + areaCloseToCreatureToAvoid,
-    };
+function adjustForSingleVectorCollision(
+  droneTarget: DroneActionLol,
+  droneVector: Vector,
+  monsterVector: Vector
+) {
+  // add drone vector and monster vector
+
+  const vector: Vector = {
+    startX: droneVector.startX,
+    startY: droneVector.startY,
+    endX: droneVector.endX + monsterVector.endX,
+    endY: droneVector.endY + monsterVector.endY,
+  };
+
+  droneTarget.targetLocation.x = vector.endX;
+  droneTarget.targetLocation.y = vector.endY;
+}
+
+function adjustForMultipleVectorCollision(
+  droneTarget: DroneActionLol,
+  droneVector: Vector,
+  monsterVectors: Vector[]
+) {
+  // add drone vector and monster vector
+
+  const monsterVector: Vector = {
+    startX: 0,
+    startY: 0,
+    endX: 0,
+    endY: 0,
+  };
+
+  // add up all monster vectors to monster vector
+  monsterVectors.forEach((m) => {
+    monsterVector.endX += m.endX;
+    monsterVector.endY += m.endY;
   });
 
-  // check if any creature vectors are going to intersect with our drone vector
-  for (const creatureVector of creatureVectors) {
-    const intersection = getIntersection(droneVector, creatureVector);
-    if (intersection) {
-      // adjust drone vector to avoid creature
-      droneVector.endX = intersection.x;
-      droneVector.endY = intersection.y;
-    }
+  // subtract monster vector from drone vector
+
+  const vector: Vector = {
+    startX: droneVector.startX,
+    startY: droneVector.startY,
+    endX: droneVector.endX - monsterVector.endX,
+    endY: droneVector.endY - monsterVector.endY,
+  };
+
+  droneTarget.targetLocation.x = vector.endX;
+  droneTarget.targetLocation.y = vector.endY;
+}
+
+function steerAwayFromMonsters(
+  droneTarget: DroneActionLol,
+  droneVector: Vector,
+  monsterVector: Vector
+) {}
+
+// find out if any bad guy locations are going to insect with our drone's location
+// find out if two vectors are going to intersect
+function updateDroneTargetAvoidingMonsters(
+  Drone: Drone,
+  droneTarget: DroneActionLol,
+  monsters: Monster[]
+) {
+  const maxDroneMoveUnits = 600;
+  const areaAroundMonsterToAvoid = 500;
+
+  // initial drone vector
+  let droneVector = this.createDroneVector(
+    Drone,
+    droneTarget,
+    maxDroneMoveUnits
+  );
+
+  const monsterVectors = monsters.map((m) => m.getVector());
+  const vectorsWithCollisions = monsterVectors.filter((m) => {
+    const intersection = getIntersection(droneVector, m);
+    return !!intersection;
+  });
+
+  // check that we will not end up within 500 units of a monster
+  const monstersFinalPositions = monsters.map((m) => m.getEndPosition());
+  const myFinalPosition = {
+    x: droneVector.endX,
+    y: droneVector.endY,
+  };
+
+  // if there are no collisions, we're good
+
+  if (vectorsWithCollisions.length === 0) {
+    this.steerAwayFromMonsters(Drone, droneTarget, monsters);
+    return;
   }
 
-  // values should be rouded to the neares integer and within the game board  of 1 to 9999
-  droneVector.endX = Math.round(droneVector.endX);
-  droneVector.endY = Math.round(droneVector.endY);
-  droneVector.endX = Math.max(1, droneVector.endX);
-  droneVector.endX = Math.min(9999, droneVector.endX);
-  droneVector.endY = Math.max(1, droneVector.endY);
-  droneVector.endY = Math.min(9999, droneVector.endY);
-  droneTarget.targetLocation.x = droneVector.endX;
-  droneTarget.targetLocation.y = droneVector.endY;
+  // there are collisions, so we need to steer away from them
+
+  // Handle single collision
+  if (vectorsWithCollisions.length === 1) {
+    this.adjustForSingleVectorCollision(
+      droneTarget,
+      droneVector,
+      vectorsWithCollisions[0]
+    );
+    return;
+  }
+
+  // Handle multiple collisions
+  adjustForMultipleVectorCollision(
+    droneTarget,
+    droneVector,
+    vectorsWithCollisions
+  );
+  return;
+}
+
+function ensureWeStayInBounds(drone: Drone, droneTarget: DroneActionLol) {
+  // if the target is out of bounds steer within bounds
+
+  if (droneTarget.targetLocation.x < 0) {
+    droneTarget.targetLocation.x = 0;
+  }
+
+  if (droneTarget.targetLocation.x > 10000) {
+    droneTarget.targetLocation.x = 10000;
+  }
+
+  if (droneTarget.targetLocation.y < 0) {
+    droneTarget.targetLocation.y = 0;
+  }
+
+  if (droneTarget.targetLocation.y > 10000) {
+    droneTarget.targetLocation.y = 10000;
+  }
 }
 
 // find out if any bad guy locations are going to insect with our drone's location
@@ -1075,6 +1077,11 @@ function getIntersection(
   return null;
 }
 
+function ensureCoordinatesAreIntegers(droneTarget: DroneActionLol) {
+  droneTarget.targetLocation.x = Math.floor(droneTarget.targetLocation.x);
+  droneTarget.targetLocation.y = Math.floor(droneTarget.targetLocation.y);
+}
+
 const gameState = new GameState();
 gameState.readCreatureCount();
 
@@ -1102,102 +1109,135 @@ while (true) {
       }
     }
 
-    // moveDroneToTargetWhileAvoidingCreature(
-    //   drone,
-    //   droneAction,
-    //   gameState.visibleCreatures.filter(
-    //     (c) => gameState.creatureDic[c.creatureId].type === -1
-    //   )
-    // );
+    updateDroneTargetAvoidingMonsters(
+      drone,
+      droneAction,
+      Object.values(gameState.monsters).filter((m) => m.encountered)
+    );
+
+    ensureWeStayInBounds(drone, droneAction);
+    ensureCoordinatesAreIntegers(droneAction);
 
     // get angle
-    var startx = drone.droneX;
-    var endx = droneAction.targetLocation.x;
-    var starty = drone.droneY;
-    var endy = droneAction.targetLocation.y;
+    // var startx = drone.droneX;
+    // var endx = droneAction.targetLocation.x;
+    // var starty = drone.droneY;
+    // var endy = droneAction.targetLocation.y;
 
-    var angle = (Math.atan2(endy - starty, endx - startx) * 180) / Math.PI;
+    // var angle = (Math.atan2(endy - starty, endx - startx) * 180) / Math.PI;
 
-    debug(
-      `Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${droneAction.targetLocation.x}, ${droneAction.targetLocation.y} at angle ${angle}`
-    );
+    // debug(
+    //   `Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${droneAction.targetLocation.x}, ${droneAction.targetLocation.y} at angle ${angle}`
+    // );
 
-    var distance = 600;
+    // var distance = 600;
 
-    var distX = startx + distance * Math.cos((angle * Math.PI) / 180);
-    var distY = starty + distance * Math.sin((angle * Math.PI) / 180);
+    // var distX = startx + distance * Math.cos((angle * Math.PI) / 180);
+    // var distY = starty + distance * Math.sin((angle * Math.PI) / 180);
 
-    debug(
-      `Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${distX}, ${distY} at angle ${angle}`
-    );
+    // debug(
+    //   `Drone ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${distX}, ${distY} at angle ${angle}`
+    // );
 
-    for (const monst of Object.values(gameState.lastKnownMonsterLocations)) {
-      // if monster is within 1000 units of our drone
-      if (
-        Math.abs(monst.creatureX - drone.droneX) < 1000 &&
-        Math.abs(monst.creatureY - drone.droneY) < 1000
-      ) {
-        debug(
-          `fish in our range! ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${monst.creatureX}, ${monst.creatureY} at angle ${angle}`
-        );
+    // for (const monst of Object.values(gameState.monsters)) {
+    //   // if monster is within 1000 units of our drone
+    //   if (
+    //     Math.abs(monst.creatureX - drone.droneX) < 1000 &&
+    //     Math.abs(monst.creatureY - drone.droneY) < 1000
+    //   ) {
+    //     debug(
+    //       `fish in our range! ${drone.droneId} is at ${drone.droneX}, ${drone.droneY} and is going to ${monst.creatureX}, ${monst.creatureY} at angle ${angle}`
+    //     );
 
-        // if monster is coming our direction
-        if (
-          (drone.droneX < monst.creatureX && monst.creatureVx < 0) ||
-          (drone.droneY < monst.creatureY && monst.creatureVy < 0) ||
-          (drone.droneX > monst.creatureX && monst.creatureVx > 0) ||
-          (drone.droneY > monst.creatureY && monst.creatureVy > 0)
-        ) {
-
-          
-          distX += monst.creatureVx;
-          distY += monst.creatureVy;
-          debug(`Diverting x: ${distX} y: ${distY}`);
-        }
-      }
-    }
+    //     // if monster is coming our direction
+    //     if (
+    //       (drone.droneX < monst.creatureX && monst.creatureVx < 0) ||
+    //       (drone.droneY < monst.creatureY && monst.creatureVy < 0) ||
+    //       (drone.droneX > monst.creatureX && monst.creatureVx > 0) ||
+    //       (drone.droneY > monst.creatureY && monst.creatureVy > 0)
+    //     ) {
+    //       distX += monst.creatureVx;
+    //       distY += monst.creatureVy;
+    //       debug(`Diverting x: ${distX} y: ${distY}`);
+    //     }
+    //   }
+    // }
+    //
+    // droneAction.targetLocation.x = distX;
+    // droneAction.targetLocation.y = distY;
 
     if (droneAction.wait) {
       drone.wait(droneAction.light, droneAction.message);
     } else {
       drone.move(
-        Math.floor(distX),
-        Math.floor(distY),
+        droneAction.targetLocation.x,
+        droneAction.targetLocation.y,
         droneAction.light,
         droneAction.message
       );
     }
-
-    // // if (returnToSurface()) {
-    // //   continue;
-    // // }
-
-    // // if (ifLowerThan10BatteryWaitTurnOffLight(drone)) {
-    // //   continue;
-    // // }
-
-    // // if (ifHigherThan2500GoDownUnlessFlaggedToReturn(drone)) {
-    // //   continue;
-    // // }
-
-    // // if (moveRightUntilNoFish(drone)) {
-    // //   continue;
-    // // }
-
-    // // // fallback
-    // // if (returnToSurface(true)) {
-    // //   continue;
-    // // }
-
-    // // Write an action using console.log()
-    // // To debug: console.error('Debug messages...');
-
-    // drone.move(drone.droneX, drone.droneY, false);
-
-    // console.log("WAIT 1"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
   }
 }
 
 function debug(message: string) {
   printErr(message);
+}
+
+/** --------------- CLASSES ----------------- */
+class VisibleCreature {
+  creatureId: number;
+  creatureX: number;
+  creatureY: number;
+  creatureVx: number;
+  creatureVy: number;
+  constructor(
+    creatureId: number,
+    creatureX: number,
+    creatureY: number,
+    creatureVx: number,
+    creatureVy: number
+  ) {
+    this.creatureId = creatureId;
+    this.creatureX = creatureX;
+    this.creatureY = creatureY;
+    this.creatureVx = creatureVx;
+    this.creatureVy = creatureVy;
+  }
+}
+
+class Creature {
+  creatureId: number;
+  color: number;
+  type: number;
+  mScan: boolean = false;
+  fScan: boolean = false;
+  zone: FishZone;
+  constructor(creatureId: number, color: number, type: number) {
+    this.creatureId = creatureId;
+    this.color = color;
+    this.type = type;
+  }
+}
+
+class RadarBlip {
+  droneId: number;
+  creatureId: number;
+  radar: string;
+  constructor(droneId: number, creatureId: number, radar: string) {
+    this.droneId = droneId;
+    this.creatureId = creatureId;
+    this.radar = radar;
+  }
+}
+
+class FishZones {
+  zone1: FishZone = { id: 1, Ymin: 2500, Ymax: 500 };
+  zone2: FishZone = { id: 2, Ymin: 5000, Ymax: 7500 };
+  zone3: FishZone = { id: 3, Ymin: 7500, Ymax: 10000 };
+}
+
+class FishTypes {
+  Fish1 = 0;
+  Fish2 = 1;
+  Fish3 = 2;
 }
