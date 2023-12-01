@@ -1026,11 +1026,114 @@ function adjustForMultipleVectorCollision(
   droneTarget.targetLocation.y = vector.endY;
 }
 
-function steerAwayFromMonsters(
+function avoidMonsterLastDitchEffort(
+  drone: Drone,
   droneTarget: DroneActionLol,
-  droneVector: Vector,
-  monsterVector: Vector
-) {}
+  monsters: Monster[]
+) {
+  const monstersLastPositions = monsters.map((m) => m.getEndPosition());
+
+  // if any end positions are within 500 units of our drone target, steer away from them
+
+  const droneTargetLocation = {
+    x: droneTarget.targetLocation.x,
+    y: droneTarget.targetLocation.y,
+  };
+
+  const monstersWithin500Units = monstersLastPositions.filter((m) => {
+    const distance = Math.sqrt(
+      Math.pow(m.x - droneTargetLocation.x, 2) +
+        Math.pow(m.y - droneTargetLocation.y, 2)
+    );
+
+    return distance < 500;
+  });
+
+  // WE GOOD
+  if (monstersWithin500Units.length === 0) {
+    return;
+  }
+
+  // WE BAD
+
+  // pick a new target within 600 units that is not within 500 units of a monster last position
+  const avoidanceVectors = createDroneVectors(drone);
+  const avoidanceVectorsThatWontKillUs = avoidanceVectors.filter((v) => {
+    const vectorLastPosition = getVectorLastPosition(v);
+    // if vector las position is within 500 units of a monster last position, don't use it
+    const monstersWithin500Units = monstersLastPositions.filter((m) => {
+      const distance = Math.sqrt(
+        Math.pow(m.x - vectorLastPosition.x, 2) +
+          Math.pow(m.y - vectorLastPosition.y, 2)
+      );
+
+      return distance < 500;
+    });
+  });
+
+  // if there are no avoidance vectors, we're screwed
+  if (avoidanceVectorsThatWontKillUs.length === 0) {
+    return;
+  }
+
+  // pick the first one
+  const avoidanceVector = avoidanceVectorsThatWontKillUs[0];
+  droneTarget.targetLocation.x = avoidanceVector.endX;
+  droneTarget.targetLocation.y = avoidanceVector.endY;
+}
+
+function getVectorLastPosition(vector: Vector): { x: number; y: number } {
+  const vectorLength = Math.sqrt(
+    Math.pow(vector.endX - vector.startX, 2) +
+      Math.pow(vector.endY - vector.startY, 2)
+  );
+
+  const vectorUnitX = (vector.endX - vector.startX) / vectorLength;
+  const vectorUnitY = (vector.endY - vector.startY) / vectorLength;
+
+  return {
+    x: vector.startX + vectorUnitX * vectorLength,
+    y: vector.startY + vectorUnitY * vectorLength,
+  };
+}
+
+function createDroneVectors(drone: Drone): Vector[] {
+  const maxDroneMoveUnits = 600;
+  // create a vector for 8 directions, 45 degrees apart
+  const degs = [0, 45, 90, 135, 180, 225, 270, 315];
+  const vectors = degs.map((d) => {
+    const vector = {
+      startX: drone.droneX,
+      endX: Math.floor(drone.droneX + maxDroneMoveUnits * Math.cos(d)),
+      startY: drone.droneY,
+      endY: Math.floor(drone.droneY + maxDroneMoveUnits * Math.sin(d)),
+    };
+
+    return ensureVectorIsWithinBounds(vector);
+  });
+
+  return vectors;
+}
+
+function ensureVectorIsWithinBounds(vector: Vector): Vector {
+  if (vector.endX < 0) {
+    vector.endX = 0;
+  }
+
+  if (vector.endX > 10000) {
+    vector.endX = 10000;
+  }
+
+  if (vector.endY < 0) {
+    vector.endY = 0;
+  }
+
+  if (vector.endY > 10000) {
+    vector.endY = 10000;
+  }
+
+  return vector;
+}
 
 // find out if any bad guy locations are going to insect with our drone's location
 // find out if two vectors are going to intersect
@@ -1221,6 +1324,11 @@ while (true) {
 
     ensureWeStayInBounds(drone, droneAction);
     ensureCoordinatesAreIntegers(droneAction);
+    avoidMonsterLastDitchEffort(
+      drone,
+      droneAction,
+      Object.values(gameState.monsters).filter((m) => m.encountered)
+    );
 
     // get angle
     // var startx = drone.droneX;
