@@ -50,6 +50,18 @@ declare function readline(): string;
 declare function print(value: string): void;
 declare function printErr(message: string): void;
 
+function distanceBetweenPoints(p1: Point, p2: Point): number {
+  return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+}
+
+function arePointsInRange(p1: Point, p2: Point, range: number): boolean {
+  return distanceBetweenPoints(p1, p2) <= range;
+}
+
+type Point = {
+  x: number;
+  y: number;
+};
 
 type CalculatedVector = [number, number];
 class Vector {
@@ -79,7 +91,6 @@ class VisibleCreature {
     this.creatureVy = creatureVy;
   }
 }
-
 
 class FishZone {
   id: number;
@@ -172,7 +183,6 @@ class Monster {
   }
 
   getMonsterRectangle() {
-
     const startPos = this.getStartPositon();
     const endPos = this.getEndPosition();
 
@@ -600,6 +610,42 @@ class GameState {
   }
 }
 
+interface DroneStrategy {
+  completed: boolean;
+  nextPosition(): Point | undefined;
+}
+
+class DiveAndRise implements DroneStrategy {
+  distanceToPoint: number = 650;
+  completed: boolean = false;
+  points: Point[] = [];
+
+  constructor(
+    points: Point[],
+    private drone: Drone
+  ) {
+    this.points = points;
+  }
+
+  nextPosition(): Point | undefined {
+    const dronePosition = this.drone.getPosition();
+    const nextPoint = this.points[0];
+
+    if (!nextPoint) return undefined;
+
+    if (arePointsInRange(dronePosition, nextPoint, this.distanceToPoint)) {
+      this.points.shift();
+    }
+
+    if (!this.points.length) {
+      this.completed = true;
+      return undefined;
+    }
+
+    return nextPoint;
+  }
+}
+
 class Drone {
   droneId: number;
   droneX: number;
@@ -612,11 +658,13 @@ class Drone {
   targetPoition: { x: number; y: number } = { x: 0, y: 0 };
   isLeft: boolean;
 
+  strategy: DroneStrategy;
+
   resetTank() {
     this.scans = [];
   }
 
-  targetLocation: { x: number; y: number } = { x: 0, y: 0 };
+  targetLocation: Point = { x: 0, y: 0 };
   shouldTurnOnLight: boolean = false;
   shouldWait: boolean = false;
 
@@ -636,6 +684,13 @@ class Drone {
     this.initialX = droneX;
   }
 
+  getPosition(): Point {
+    return {
+      x: this.droneX,
+      y: this.droneY,
+    };
+  }
+
   wait(light: boolean, message: string = "") {
     console.log(`WAIT ${light ? 1 : 0} ${message}`);
   }
@@ -645,20 +700,34 @@ class Drone {
   }
 
   debugPosition() {
-    debug(`Drone ${this.droneId} target ${this.targetLocation.x} ${this.targetLocation.y}`);
+    debug(
+      `Drone ${this.droneId} target ${this.targetLocation.x} ${this.targetLocation.y}`
+    );
+    debug(
+      `Drone ${this.droneId} currentPosition ${this.targetLocation.x} ${this.targetLocation.y}`
+    );
   }
 
   execute(debug: boolean): void {
-    if(debug)
-      this.debugPosition();
-     
-    if (this.shouldWait) {
+    const nextTarget = this.strategy.nextPosition();
+
+    if (debug) this.debugPosition();
+
+    if (!nextTarget) {
+      this.targetLocation = { x: -1, y: -1 };
       this.wait(this.shouldTurnOnLight);
       return;
     }
 
+    this.targetLocation = nextTarget;
 
-    this.move(this.targetLocation.x, this.targetLocation.y, this.shouldTurnOnLight);
+    if (debug) this.debugPosition();
+
+    this.move(
+      this.targetLocation.x,
+      this.targetLocation.y,
+      this.shouldTurnOnLight
+    );
   }
 }
 
@@ -672,8 +741,21 @@ while (true) {
 
   const myDrones = gameState.myDrones;
 
+  if (gameState.turns === 1) {
+    // set drone strategies
+    myDrones.forEach((d) => {
+      d.strategy = new DiveAndRise(
+        [
+          { x: 1300, y: 3000 },
+          // { x: 8500, y: 3000 },
+          // { x: 8500, y: 500 },
+        ],
+        d
+      );
+    });
+  }
+
   myDrones.forEach((d) => {
-    d.targetLocation = { x: 5000, y: 8500 };
     d.shouldTurnOnLight = false;
     d.execute(true);
   });
