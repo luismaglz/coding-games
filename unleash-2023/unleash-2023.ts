@@ -396,7 +396,7 @@ class GameState {
       (m) => !visibleMonsters.includes(m) && m.encountered
     );
 
-    this.estimateMonsterPosition(nonVisibleMonsters);
+    // this.estimateMonsterPosition(nonVisibleMonsters);
   }
 
   estimateMonsterPosition(monsters: Monster[]) {
@@ -646,6 +646,231 @@ class DiveAndRise implements DroneStrategy {
   }
 }
 
+class YOLO implements DroneStrategy {
+  distanceToPoint: number = 500;
+  completed: boolean = false;
+  points: Point[] = [];
+
+  monsterSpeed: number = 540;
+
+  constructor(
+    points: Point[],
+    private drone: Drone,
+    private gameState: GameState
+  ) {
+    this.points = points;
+  }
+
+  createVector(start: Point, end: Point): Vector {
+    return {
+      startX: start.x,
+      startY: start.y,
+      endX: end.x,
+      endY: end.y,
+    };
+  }
+
+  limitVectorLength(vector: Vector, maxLength: number): Vector {
+    const length = distanceBetweenPoints(
+      { x: vector.startX, y: vector.startY },
+      { x: vector.endX, y: vector.endY }
+    );
+
+    if (length <= maxLength) return vector;
+
+    const ratio = maxLength / length;
+
+    return {
+      startX: vector.startX,
+      startY: vector.startY,
+      endX: vector.startX + (vector.endX - vector.startX) * ratio,
+      endY: vector.startY + (vector.endY - vector.startY) * ratio,
+    };
+  }
+
+  pointFromCreature(creature: VisibleCreature): Point {
+    return {
+      x: creature.creatureX,
+      y: creature.creatureY,
+    };
+  }
+
+  // monstersCloseToMe(): Monster[] {
+  //   const safeDistance = 1140;
+
+  //   const monstersClose = Object.values(this.gameState.monsters).filter((m) => {
+  //     const monsterPoint = this.pointFromCreature(m);
+  //     const distance = distanceBetweenPoints(
+  //       monsterPoint,
+  //       this.drone.getPosition()
+  //     );
+  //     return distance < safeDistance;
+  //   });
+
+  //   const cloneMonsters = monstersClose.map((m) => Object.assign({}, m));
+
+  //   // update cloneMonsters values vx and vy to make them head towards the drone at 540
+  //   // cloneMonsters.forEach((m) => {
+  //   //   const monsterPoint = this.pointFromCreature(m);
+  //   //   const vector = this.createVector(monsterPoint, this.drone.getPosition());
+  //   //   const limitedVector = this.limitVectorLength(vector, this.monsterSpeed);
+  //   //   m.creatureVx = limitedVector.endX - limitedVector.startX;
+  //   //   m.creatureVy = limitedVector.endY - limitedVector.startY;
+  //   // });
+
+  //   return cloneMonsters;
+  // }
+
+  monstersThatSeeMe(): Monster[] {
+    const monstersThatSeeMe = gameState.visibleCreatures.filter((c) => {
+      const monster = gameState.creatureDic[c.creatureId];
+      return monster.type === -1;
+    });
+
+    const monsters = monstersThatSeeMe.map((m) => {
+      return gameState.monsters[m.creatureId];
+    });
+
+    // clone Monsters
+    const cloneMonsters = monsters.map((m) => Object.assign({}, m));
+
+    cloneMonsters.forEach((m) => {
+      const monsterPoint = this.pointFromCreature(m);
+      const vector = this.createVector(monsterPoint, this.drone.getPosition());
+      const limitedVector = this.limitVectorLength(vector, this.monsterSpeed);
+      m.creatureVx = Math.floor(limitedVector.endX - limitedVector.startX);
+      m.creatureVy = Math.floor(limitedVector.endY - limitedVector.startY);
+    });
+
+    return cloneMonsters;
+  }
+
+  getAllPointsInRadius(point: Point, radius: number): Point[] {
+    const points: Point[] = [];
+
+    for (let x = point.x - radius; x <= point.x + radius; x++) {
+      for (let y = point.y - radius; y <= point.y + radius; y++) {
+        points.push({ x, y });
+      }
+    }
+
+    return points;
+  }
+
+  getAllPointInRadiusWithStep(point: Point, radius: number, step: number) {
+    const points: Point[] = [];
+
+    for (let x = point.x - radius; x <= point.x + radius; x += step) {
+      for (let y = point.y - radius; y <= point.y + radius; y += step) {
+        points.push({ x, y });
+      }
+    }
+
+    return points;
+  }
+
+  getVectorFromVisibleCreature(creature: VisibleCreature): Vector {
+    return {
+      startX: creature.creatureX,
+      endX: creature.creatureX + creature.creatureVx,
+      startY: creature.creatureY,
+      endY: creature.creatureY + creature.creatureVy,
+    };
+  }
+
+  updateNextPointToAvoidMonsterCollisions(
+    nextPoint: Point,
+    monsters: VisibleCreature[]
+  ): Point {
+    // drone max speed is 600
+    // monster speed is 540
+    const allPointsInRadius = this.getAllPointInRadiusWithStep(
+      this.drone.getPosition(),
+      600,
+      100
+    );
+
+    // safe points are at least 540 away from the monster
+
+    const futureMonsterLocations = monsters.map((m) => {
+      const vector = this.getVectorFromVisibleCreature(m);
+      const limitedVector = this.limitVectorLength(vector, this.monsterSpeed);
+      return {
+        x: limitedVector.endX,
+        y: limitedVector.endY,
+      };
+    });
+
+    const currentMonsterLocations = monsters.map((m) =>
+      this.pointFromCreature(m)
+    );
+
+    debug(`futureMonsterLocations ${JSON.stringify(futureMonsterLocations)}`);
+
+    const safePoints = allPointsInRadius.filter((safePoint) => {
+      const safeDistance = 500;
+
+      const distances = [
+        ...currentMonsterLocations,
+        ...futureMonsterLocations,
+      ].map((mp) => distanceBetweenPoints(mp, safePoint));
+
+      return distances.every((d) => d > safeDistance);
+    });
+
+    // sort safe points by distance to nextPoint closest first
+    const sortedPoints = safePoints.sort((a, b) => {
+      const distanceA = distanceBetweenPoints(a, nextPoint);
+      const distanceB = distanceBetweenPoints(b, nextPoint);
+      return distanceA - distanceB;
+    });
+
+    debug(`first Point ${JSON.stringify(sortedPoints[0])}`);
+    debug(
+      `last Point ${JSON.stringify(sortedPoints[sortedPoints.length - 1])}`
+    );
+    return sortedPoints[0];
+  }
+
+  nextPosition(): Point | undefined {
+    debug(`turn ${this.gameState.turns}`);
+    const dronePosition = this.drone.getPosition();
+    let nextPoint = this.points[0];
+
+    if (!nextPoint) return undefined;
+
+    if (arePointsInRange(dronePosition, nextPoint, this.distanceToPoint)) {
+      this.points.shift();
+      nextPoint = this.points[0];
+    }
+
+    if (!this.points.length) {
+      this.completed = true;
+      return undefined;
+    }
+
+    debug(`nextPoint ${JSON.stringify(nextPoint)}`);
+
+    const _monsters = this.monstersThatSeeMe();
+
+    // remove duplicate monsters
+    const monsters = _monsters.filter(
+      (m, index) => _monsters.indexOf(m) === index
+    );
+    debug(`close monsters ${JSON.stringify(monsters)}`);
+
+    if (!monsters.length) return nextPoint;
+
+    const newPoint = this.updateNextPointToAvoidMonsterCollisions(
+      nextPoint,
+      monsters
+    );
+
+    debug(`newPoint ${JSON.stringify(newPoint)}`);
+    return newPoint;
+  }
+}
+
 class Drone {
   droneId: number;
   droneX: number;
@@ -700,15 +925,15 @@ class Drone {
   }
 
   debugPosition() {
-    debug(
-      `Drone ${this.droneId} target ${this.targetLocation.x} ${this.targetLocation.y}`
-    );
-    debug(
-      `Drone ${this.droneId} currentPosition ${this.targetLocation.x} ${this.targetLocation.y}`
-    );
+    // debug(
+    //   `Drone ${this.droneId} target ${this.targetLocation.x} ${this.targetLocation.y}`
+    // );
+    // debug(
+    //   `Drone ${this.droneId} currentPosition ${this.targetLocation.x} ${this.targetLocation.y}`
+    // );
   }
 
-  execute(debug: boolean): void {
+  execute(debug: boolean, turn: number): void {
     const nextTarget = this.strategy.nextPosition();
 
     if (debug) this.debugPosition();
@@ -722,6 +947,9 @@ class Drone {
     this.targetLocation = nextTarget;
 
     if (debug) this.debugPosition();
+
+    // should turn light on every 3 turns
+    this.shouldTurnOnLight = false;
 
     this.move(
       this.targetLocation.x,
@@ -743,21 +971,38 @@ while (true) {
 
   if (gameState.turns === 1) {
     // set drone strategies
-    myDrones.forEach((d) => {
-      d.strategy = new DiveAndRise(
-        [
-          { x: 1300, y: 3000 },
-          // { x: 8500, y: 3000 },
-          // { x: 8500, y: 500 },
-        ],
-        d
-      );
+    myDrones.forEach((d, index) => {
+      if (index === 0) {
+        d.strategy = new DiveAndRise(
+          [
+            { x: 1300, y: 3000 },
+            { x: 8500, y: 3000 },
+            { x: 8500, y: 500 },
+          ],
+          d
+        );
+      } else {
+        d.strategy = new YOLO(
+          [
+            { x: 1745, y: 8694 },
+            { x: 7629, y: 8694 },
+            { x: 400, y: 8694 },
+            // { x: 6000, y: 0 },
+            // { x: 6600, y: 0 },
+            // { x: 6000, y: 0 },
+            // { x: 6600, y: 0 },
+            // { x: 6000, y: 0 },
+          ],
+          d,
+          gameState
+        );
+      }
     });
   }
 
   myDrones.forEach((d) => {
     d.shouldTurnOnLight = false;
-    d.execute(true);
+    d.execute(true, gameState.turns);
   });
 }
 
