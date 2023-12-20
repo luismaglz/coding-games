@@ -1,50 +1,4 @@
-// Game Protocol
-// Initialization Input
-// First line: creatureCount an integer for the number of creatures in the game zone. Will always be 12.
-// Next creatureCount lines: 3 integers describing each creature:
-// creatureId for this creature's unique id.
-// color (0 to 3) and type (0 to 2).
-// Input for One Game Turn
-// Next line: myScore for you current score.
-// Next line: foeScore for you opponent's score.
-
-// Next line: myScanCount for your amount of saved scans.
-// Next myScanCount lines: creatureId for each scan scored.
-
-// Next line: foeScanCount for your opponent's amount of saved scans.
-// Next foeScanCount lines: creatureId for each scan scored by your opponent.
-
-// Next line: myDroneCount for the number of drones you control.
-// Next myDroneCount lines:
-// droneId: this drone's unique id.
-// droneX and droneY: this drone's position.
-// emergency: unused in this league.
-// battery: this drone's current battery level.
-// Next line: foeDroneCount for the number of drones your opponent controls.
-// Next foeDroneCount lines:
-// droneId: this drone's unique id.
-// droneX and droneY: this drone's position.
-// emergency: unused in this league.
-// battery: this drone's current battery level.
-// Next line: droneScanCount for the amount of scans currently within a drone.
-// Next droneScanCount lines: droneId and creatureId describing which drone contains a scan of which fish.
-
-// Next line: visibleCreatureCount the number of creatures within the light radius of your drones.
-// Next visibleCreatureCount lines:
-// creatureId: this creature's unique id.
-// creatureX and creatureY: this creature's position.
-// creatureVx and creatureVy: this creature's current speed.
-// Next line: radarBlipCount.
-// Next radarBlipCount lines: Two integers droneId, creatureId and a string radar indicating the relative position between each creature and each one of your drones. radar can be:
-// TL: the creature is to the top-left of the drone.
-// TR: the creature is to the top-right of the drone.
-// BR: the creature is to the bottom-right of the drone.
-// BL: the creature is to the bottom-left of the drone.
-
-// surface is y 0
-// bottom is y 10000
-// left is x 0
-// right is x 10000
+// seed=-3331652981769725401
 
 declare function readline(): string;
 declare function print(value: string): void;
@@ -220,10 +174,6 @@ class GameState {
 
   constructor() {}
 
-  shouldTurnOnLightOnTicks(): boolean {
-    return this.turns % 3 === 0;
-  }
-
   log(): void {
     // debug(`creatureCount ${JSON.stringify(this.creatureCount)}`);
     // debug(`creatures ${JSON.stringify(this.creatures)}`);
@@ -240,84 +190,8 @@ class GameState {
     // debug(`droneScans ${JSON.stringify(this.droneScans)}`);
     debug(`visibleCreatures ${JSON.stringify(this.visibleCreatures)}`);
     // debug(`radarBlips ${JSON.stringify(this.radarBlips)}`);
-    debug(`monsters ${JSON.stringify(this.monsters)}`);
+    // debug(`monsters ${JSON.stringify(this.monsters)}`);
     // debug(`badGuys ${JSON.stringify(this.monsters)}`);
-  }
-
-  isMonsterWithinDroneRange(drone: Drone) {
-    const monsters = this.creatures
-      .filter((c) => c.type === -1)
-      .map((c) => c.creatureId);
-
-    const monstersVisible = this.visibleCreatures.filter((c) =>
-      monsters.includes(c.creatureId)
-    );
-
-    return monstersVisible.length > 0;
-  }
-
-  getUnscannedCreatures(): number[] {
-    const droneScans = this.myDrones.map((d) => d.scans).flat();
-    const unscanned = this.creatures
-      .filter((c) => c.type !== -1)
-      .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
-      .filter((c) => !droneScans.includes(c.creatureId))
-      .map((c) => c.creatureId);
-
-    // sort by weight
-    const sorted = unscanned.sort((a, b) => {
-      const creatureA = this.creatureDic[a];
-      const creatureB = this.creatureDic[b];
-
-      return creatureB.weight - creatureA.weight;
-    });
-
-    return sorted;
-  }
-
-  getZ1UnscannedCreatures(): number[] {
-    const droneScans = this.myDrones.map((d) => d.scans).flat();
-    return this.creatures
-      .filter((c) => c.type !== -1)
-      .filter((c) => c.zone.id === 1)
-      .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
-      .filter((c) => !droneScans.includes(c.creatureId))
-      .filter((c) => !this.targetFish.includes(c.creatureId))
-      .map((c) => c.creatureId);
-  }
-
-  hasZone1UnscannedCreatures(): boolean {
-    return this.getZ1UnscannedCreatures().length > 0;
-  }
-
-  getZ2UnscannedCreatures(): number[] {
-    const droneScans = this.myDrones.map((d) => d.scans).flat();
-    return this.creatures
-      .filter((c) => c.type !== -1)
-      .filter((c) => c.zone.id === 2)
-      .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
-      .filter((c) => !droneScans.includes(c.creatureId))
-      .filter((c) => !this.targetFish.includes(c.creatureId))
-      .map((c) => c.creatureId);
-  }
-
-  hasZone2UnscannedCreatures(): boolean {
-    return this.getZ2UnscannedCreatures().length > 0;
-  }
-
-  getZ3UnscannedCreatures(): number[] {
-    const droneScans = this.myDrones.map((d) => d.scans).flat();
-    return this.creatures
-      .filter((c) => c.type !== -1)
-      .filter((c) => c.zone.id === 3)
-      .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
-      .filter((c) => !droneScans.includes(c.creatureId))
-      .filter((c) => !this.targetFish.includes(c.creatureId))
-      .map((c) => c.creatureId);
-  }
-
-  hasZone3UnscannedCreatures(): boolean {
-    return this.getZ3UnscannedCreatures().length > 0;
   }
 
   readGameState() {
@@ -497,6 +371,7 @@ class GameState {
     const myDroneCount: number = parseInt(readline());
     for (let i = 0; i < myDroneCount; i++) {
       var inputs: string[] = readline().split(" ");
+      debug(`inputs ${JSON.stringify(inputs)}`);
       const droneId: number = parseInt(inputs[0]);
       const droneX: number = parseInt(inputs[1]);
       const droneY: number = parseInt(inputs[2]);
@@ -661,65 +536,12 @@ class YOLO implements DroneStrategy {
     this.points = points;
   }
 
-  createVector(start: Point, end: Point): Vector {
-    return {
-      startX: start.x,
-      startY: start.y,
-      endX: end.x,
-      endY: end.y,
-    };
-  }
-
-  limitVectorLength(vector: Vector, maxLength: number): Vector {
-    const length = distanceBetweenPoints(
-      { x: vector.startX, y: vector.startY },
-      { x: vector.endX, y: vector.endY }
-    );
-
-    if (length <= maxLength) return vector;
-
-    const ratio = maxLength / length;
-
-    return {
-      startX: vector.startX,
-      startY: vector.startY,
-      endX: vector.startX + (vector.endX - vector.startX) * ratio,
-      endY: vector.startY + (vector.endY - vector.startY) * ratio,
-    };
-  }
-
   pointFromCreature(creature: VisibleCreature): Point {
     return {
       x: creature.creatureX,
       y: creature.creatureY,
     };
   }
-
-  // monstersCloseToMe(): Monster[] {
-  //   const safeDistance = 1140;
-
-  //   const monstersClose = Object.values(this.gameState.monsters).filter((m) => {
-  //     const monsterPoint = this.pointFromCreature(m);
-  //     const distance = distanceBetweenPoints(
-  //       monsterPoint,
-  //       this.drone.getPosition()
-  //     );
-  //     return distance < safeDistance;
-  //   });
-
-  //   const cloneMonsters = monstersClose.map((m) => Object.assign({}, m));
-
-  //   // update cloneMonsters values vx and vy to make them head towards the drone at 540
-  //   // cloneMonsters.forEach((m) => {
-  //   //   const monsterPoint = this.pointFromCreature(m);
-  //   //   const vector = this.createVector(monsterPoint, this.drone.getPosition());
-  //   //   const limitedVector = this.limitVectorLength(vector, this.monsterSpeed);
-  //   //   m.creatureVx = limitedVector.endX - limitedVector.startX;
-  //   //   m.creatureVy = limitedVector.endY - limitedVector.startY;
-  //   // });
-
-  //   return cloneMonsters;
-  // }
 
   monstersThatSeeMe(): Monster[] {
     const monstersThatSeeMe = gameState.visibleCreatures.filter((c) => {
@@ -734,48 +556,16 @@ class YOLO implements DroneStrategy {
     // clone Monsters
     const cloneMonsters = monsters.map((m) => Object.assign({}, m));
 
+    const dronePosition = this.drone.getPosition();
     cloneMonsters.forEach((m) => {
       const monsterPoint = this.pointFromCreature(m);
-      const vector = this.createVector(monsterPoint, this.drone.getPosition());
-      const limitedVector = this.limitVectorLength(vector, this.monsterSpeed);
-      m.creatureVx = Math.floor(limitedVector.endX - limitedVector.startX);
-      m.creatureVy = Math.floor(limitedVector.endY - limitedVector.startY);
+      // const vector = this.createVector(monsterPoint, this.drone.getPosition());
+      // const limitedVector = this.limitVectorLength(vector, this.monsterSpeed);
+      m.creatureVx = Math.floor(dronePosition.x - monsterPoint.x);
+      m.creatureVy = Math.floor(dronePosition.y - monsterPoint.y);
     });
 
     return cloneMonsters;
-  }
-
-  getAllPointsInRadius(point: Point, radius: number): Point[] {
-    const points: Point[] = [];
-
-    for (let x = point.x - radius; x <= point.x + radius; x++) {
-      for (let y = point.y - radius; y <= point.y + radius; y++) {
-        points.push({ x, y });
-      }
-    }
-
-    return points;
-  }
-
-  getAllPointInRadiusWithStep(point: Point, radius: number, step: number) {
-    const points: Point[] = [];
-
-    for (let x = point.x - radius; x <= point.x + radius; x += step) {
-      for (let y = point.y - radius; y <= point.y + radius; y += step) {
-        points.push({ x, y });
-      }
-    }
-
-    return points;
-  }
-
-  getVectorFromVisibleCreature(creature: VisibleCreature): Vector {
-    return {
-      startX: creature.creatureX,
-      endX: creature.creatureX + creature.creatureVx,
-      startY: creature.creatureY,
-      endY: creature.creatureY + creature.creatureVy,
-    };
   }
 
   updateNextPointToAvoidMonsterCollisions(
@@ -784,39 +574,46 @@ class YOLO implements DroneStrategy {
   ): Point {
     // drone max speed is 600
     // monster speed is 540
-    const allPointsInRadius = this.getAllPointInRadiusWithStep(
-      this.drone.getPosition(),
-      600,
-      100
-    );
+    const allPointsInRadius = [
+      ...getPointsInCircle(this.drone.getPosition(), 600, 15),
+      ...getPointsInCircle(this.drone.getPosition(), 400, 15),
+      ...getPointsInCircle(this.drone.getPosition(), 200, 15),
+    ];
+
+    debug(`allPointsInRadius ${JSON.stringify(allPointsInRadius)}`);
 
     // safe points are at least 540 away from the monster
 
-    const futureMonsterLocations = monsters.map((m) => {
-      const vector = this.getVectorFromVisibleCreature(m);
-      const limitedVector = this.limitVectorLength(vector, this.monsterSpeed);
-      return {
-        x: limitedVector.endX,
-        y: limitedVector.endY,
-      };
+    const monsterVectors = monsters.map((m) => {
+      return getVectorFromVisibleCreature(m);
     });
 
-    const currentMonsterLocations = monsters.map((m) =>
-      this.pointFromCreature(m)
-    );
-
-    debug(`futureMonsterLocations ${JSON.stringify(futureMonsterLocations)}`);
+    const podPosition = this.drone.getPosition();
 
     const safePoints = allPointsInRadius.filter((safePoint) => {
-      const safeDistance = 500;
+      const safeDistance = 503;
 
-      const distances = [
-        ...currentMonsterLocations,
-        ...futureMonsterLocations,
-      ].map((mp) => distanceBetweenPoints(mp, safePoint));
+      // check if path comes close to any monsterVectors
+      const pathsComeCloseToMonster = monsterVectors.some((monsterVector) => {
+        return isWithinExpandedBox(
+          {
+            startX: podPosition.x,
+            startY: podPosition.y,
+            endX: safePoint.x,
+            endY: safePoint.y,
+          },
+          monsterVector,
+          safeDistance
+        );
+        // return isPointNearVector(safePoint, monsterVector, safeDistance);
+      });
 
-      return distances.every((d) => d > safeDistance);
+      // if path comes close to monster we can't go there
+      if (pathsComeCloseToMonster) return false;
+      return true;
     });
+
+    debug(`safePoints ${JSON.stringify(safePoints)}`);
 
     // sort safe points by distance to nextPoint closest first
     const sortedPoints = safePoints.sort((a, b) => {
@@ -825,10 +622,6 @@ class YOLO implements DroneStrategy {
       return distanceA - distanceB;
     });
 
-    debug(`first Point ${JSON.stringify(sortedPoints[0])}`);
-    debug(
-      `last Point ${JSON.stringify(sortedPoints[sortedPoints.length - 1])}`
-    );
     return sortedPoints[0];
   }
 
@@ -851,6 +644,7 @@ class YOLO implements DroneStrategy {
 
     debug(`nextPoint ${JSON.stringify(nextPoint)}`);
 
+    debug(`dronePosition ${JSON.stringify(dronePosition)}`);
     const _monsters = this.monstersThatSeeMe();
 
     // remove duplicate monsters
@@ -869,6 +663,31 @@ class YOLO implements DroneStrategy {
     debug(`newPoint ${JSON.stringify(newPoint)}`);
     return newPoint;
   }
+}
+
+function getPointsInCircle(
+  center: { x: number; y: number },
+  radius: number,
+  degreeInterval: number
+): { x: number; y: number }[] {
+  const points: { x: number; y: number }[] = [];
+  const { x, y } = center;
+  for (let i = 0; i < 360; i += degreeInterval) {
+    const angleInRadians = (i * Math.PI) / 180;
+    const pointX = Math.round(x + radius * Math.cos(angleInRadians));
+    const pointY = Math.round(y + radius * Math.sin(angleInRadians));
+    points.push({ x: pointX, y: pointY });
+  }
+  return points;
+}
+
+function getVectorFromVisibleCreature(creature: VisibleCreature): Vector {
+  return {
+    startX: creature.creatureX,
+    endX: creature.creatureX + creature.creatureVx,
+    startY: creature.creatureY,
+    endY: creature.creatureY + creature.creatureVy,
+  };
 }
 
 class Drone {
@@ -949,7 +768,7 @@ class Drone {
     if (debug) this.debugPosition();
 
     // should turn light on every 3 turns
-    this.shouldTurnOnLight = false;
+    this.shouldTurnOnLight = gameState.turns % 3 === 0;
 
     this.move(
       this.targetLocation.x,
@@ -973,6 +792,23 @@ while (true) {
     // set drone strategies
     myDrones.forEach((d, index) => {
       if (index === 0) {
+        d.strategy = new YOLO(
+          [
+            { x: d.droneX, y: 8500 },
+            { x: d.droneX, y: 400 },
+            { x: d.droneX, y: 8500 },
+            { x: d.droneX, y: 400 },
+            { x: d.droneX, y: 8500 },
+            { x: d.droneX, y: 400 },
+            { x: d.droneX, y: 8500 },
+            { x: d.droneX, y: 400 },
+            { x: d.droneX, y: 8500 },
+            { x: d.droneX, y: 400 },
+          ],
+          d,
+          gameState
+        );
+      } else {
         d.strategy = new DiveAndRise(
           [
             { x: 1300, y: 3000 },
@@ -981,31 +817,105 @@ while (true) {
           ],
           d
         );
-      } else {
-        d.strategy = new YOLO(
-          [
-            { x: 1745, y: 8694 },
-            { x: 7629, y: 8694 },
-            { x: 400, y: 8694 },
-            // { x: 6000, y: 0 },
-            // { x: 6600, y: 0 },
-            // { x: 6000, y: 0 },
-            // { x: 6600, y: 0 },
-            // { x: 6000, y: 0 },
-          ],
-          d,
-          gameState
-        );
       }
     });
   }
 
   myDrones.forEach((d) => {
-    d.shouldTurnOnLight = false;
+    d.shouldTurnOnLight = gameState.turns % 3 === 0;
     d.execute(true, gameState.turns);
   });
 }
 
 function debug(message: string) {
   printErr(message);
+}
+
+// function distanceBetweenPoints(a: Point, b: Point): number {
+//   return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+// }
+
+function closestPointOnLineSegment(point: Point, vector: Vector): Point {
+  const dx = vector.endX - vector.startX;
+  const dy = vector.endY - vector.startY;
+  const t =
+    ((point.x - vector.startX) * dx + (point.y - vector.startY) * dy) /
+    (dx * dx + dy * dy);
+  return {
+    x: vector.startX + t * dx,
+    y: vector.startY + t * dy,
+  };
+}
+
+function isPointNearVector(
+  point: Point,
+  vector: Vector,
+  distance: number
+): boolean {
+  // Calculate the bounding box
+  const minX = Math.min(vector.startX, vector.endX) - distance;
+  const maxX = Math.max(vector.startX, vector.endX) + distance;
+  const minY = Math.min(vector.startY, vector.endY) - distance;
+  const maxY = Math.max(vector.startY, vector.endY) + distance;
+
+  // Check if the point is within the bounding box
+  if (point.x < minX || point.x > maxX || point.y < minY || point.y > maxY) {
+    return false;
+  }
+
+  // Calculate the distance from the point to the vector
+  const dx = vector.endX - vector.startX;
+  const dy = vector.endY - vector.startY;
+  const lengthSquared = dx * dx + dy * dy;
+  const dotProduct =
+    ((point.x - vector.startX) * dx + (point.y - vector.startY) * dy) /
+    lengthSquared;
+
+  if (dotProduct < 0) {
+    const distX = point.x - vector.startX;
+    const distY = point.y - vector.startY;
+    return distX * distX + distY * distY <= distance * distance;
+  } else if (dotProduct > 1) {
+    const distX = point.x - vector.endX;
+    const distY = point.y - vector.endY;
+    return distX * distX + distY * distY <= distance * distance;
+  } else {
+    const projX = vector.startX + dotProduct * dx;
+    const projY = vector.startY + dotProduct * dy;
+    const distX = point.x - projX;
+    const distY = point.y - projY;
+    return distX * distX + distY * distY <= distance * distance;
+  }
+}
+
+function isWithinExpandedBox(
+  v1: Vector,
+  monsterrVector: Vector,
+  D: number
+): boolean {
+  // Calculate the bounding boxes
+  const box1 = {
+    left: Math.min(v1.startX, v1.endX),
+    right: Math.max(v1.startX, v1.endX),
+    bottom: Math.min(v1.startY, v1.endY),
+    top: Math.max(v1.startY, v1.endY),
+  };
+  const box2 = {
+    left: Math.min(monsterrVector.startX, monsterrVector.endX) - D,
+    right: Math.max(monsterrVector.startX, monsterrVector.endX) + D,
+    bottom: Math.min(monsterrVector.startY, monsterrVector.endY) - D,
+    top: Math.max(monsterrVector.startY, monsterrVector.endY) + D,
+  };
+
+  // Check if v1 is within the expanded bounding box of v2
+  if (
+    box1.left >= box2.left &&
+    box1.right <= box2.right &&
+    box1.bottom >= box2.bottom &&
+    box1.top <= box2.top
+  ) {
+    return true;
+  }
+
+  return false;
 }
