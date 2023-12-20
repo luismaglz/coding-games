@@ -1,4 +1,6 @@
 // seed=-3331652981769725401
+//https://www.desmos.com/calculator/2rnqgoa6a4
+//https://www.convertcsv.com/json-to-csv.htm
 
 declare function readline(): string;
 declare function print(value: string): void;
