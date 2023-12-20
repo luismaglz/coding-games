@@ -97,7 +97,7 @@ class Monster {
   creatureY: number;
   creatureVx: number;
   creatureVy: number;
-  encountered: boolean = false;
+  lastSeenTurn: number;
 
   constructor(
     creatureId: number,
@@ -262,15 +262,8 @@ class GameState {
       this.monsters[monster.creatureId].creatureVy = monster.creatureVy;
       this.monsters[monster.creatureId].creatureX = monster.creatureX;
       this.monsters[monster.creatureId].creatureY = monster.creatureY;
-      this.monsters[monster.creatureId].encountered = true;
+      this.monsters[monster.creatureId].lastSeenTurn = this.turns;
     });
-
-    // Only estimate detected monsters
-    const nonVisibleMonsters = Object.values(this.monsters).filter(
-      (m) => !visibleMonsters.includes(m) && m.encountered
-    );
-
-    // this.estimateMonsterPosition(nonVisibleMonsters);
   }
 
   estimateMonsterPosition(monsters: Monster[]) {
@@ -543,14 +536,35 @@ class YOLO implements DroneStrategy {
     };
   }
 
-  monstersThatSeeMe(): Monster[] {
+  monstersThatSeeMe(turns: number = 3): Monster[] {
     const monstersThatSeeMe = gameState.visibleCreatures.filter((c) => {
       const monster = gameState.creatureDic[c.creatureId];
       return monster.type === -1;
     });
 
+    const monstersISawBefore = Object.values(this.gameState.monsters).filter(
+      (m) => m.lastSeenTurn >= this.gameState.turns - turns
+    );
+
     const monsters = monstersThatSeeMe.map((m) => {
       return gameState.monsters[m.creatureId];
+    });
+
+    monstersISawBefore.forEach((m) => {
+      if (!monsters.find((m2) => m2.creatureId === m.creatureId)) {
+        // clone monster
+        const cloneMonster = Object.assign({}, m);
+
+        const turnsSinceIveSeenMonster =
+          this.gameState.turns - cloneMonster.lastSeenTurn;
+        cloneMonster.creatureX =
+          cloneMonster.creatureX +
+          cloneMonster.creatureVx * turnsSinceIveSeenMonster;
+        cloneMonster.creatureY =
+          cloneMonster.creatureY +
+          cloneMonster.creatureVy * turnsSinceIveSeenMonster;
+        monsters.push(cloneMonster);
+      }
     });
 
     // clone Monsters
@@ -574,13 +588,17 @@ class YOLO implements DroneStrategy {
   ): Point {
     // drone max speed is 600
     // monster speed is 540
-    const allPointsInRadius = [
+    const _allPointsInRadius = [
       ...getPointsInCircle(this.drone.getPosition(), 600, 15),
       ...getPointsInCircle(this.drone.getPosition(), 400, 15),
       ...getPointsInCircle(this.drone.getPosition(), 200, 15),
     ];
 
-    debug(`allPointsInRadius ${JSON.stringify(allPointsInRadius)}`);
+    // remove points out of bounds 0, 10000
+    const pointsInBounds = _allPointsInRadius.filter((p) => {
+      return p.x >= 0 && p.x <= 10000 && p.y >= 0 && p.y <= 10000;
+    });
+    debug(`allPointsInRadius ${JSON.stringify(pointsInBounds)}`);
 
     // safe points are at least 540 away from the monster
 
@@ -590,8 +608,8 @@ class YOLO implements DroneStrategy {
 
     const podPosition = this.drone.getPosition();
 
-    const safePoints = allPointsInRadius.filter((safePoint) => {
-      const safeDistance = 503;
+    const safePoints = pointsInBounds.filter((safePoint) => {
+      const safeDistance = 550;
 
       // check if path comes close to any monsterVectors
       const pathsComeCloseToMonster = monsterVectors.some((monsterVector) => {
@@ -791,33 +809,33 @@ while (true) {
   if (gameState.turns === 1) {
     // set drone strategies
     myDrones.forEach((d, index) => {
-      if (index === 0) {
-        d.strategy = new YOLO(
-          [
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 400 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 400 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 400 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 400 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 400 },
-          ],
-          d,
-          gameState
-        );
-      } else {
-        d.strategy = new DiveAndRise(
-          [
-            { x: 1300, y: 3000 },
-            { x: 8500, y: 3000 },
-            { x: 8500, y: 500 },
-          ],
-          d
-        );
-      }
+      // if (index === 0) {
+      d.strategy = new YOLO(
+        [
+          { x: d.droneX, y: 8500 },
+          { x: d.droneX, y: 400 },
+          { x: d.droneX, y: 8500 },
+          { x: d.droneX, y: 400 },
+          { x: d.droneX, y: 8500 },
+          { x: d.droneX, y: 400 },
+          { x: d.droneX, y: 8500 },
+          { x: d.droneX, y: 400 },
+          { x: d.droneX, y: 8500 },
+          { x: d.droneX, y: 400 },
+        ],
+        d,
+        gameState
+      );
+      // } else {
+      // d.strategy = new DiveAndRise(
+      //   [
+      //     { x: 1300, y: 3000 },
+      //     { x: 8500, y: 3000 },
+      //     { x: 8500, y: 500 },
+      //   ],
+      //   d
+      // );
+      // }
     });
   }
 
