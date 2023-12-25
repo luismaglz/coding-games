@@ -19,6 +19,20 @@ type Point = {
   y: number;
 };
 
+type Box = {
+  left: number;
+  right: number;
+  bottom: number;
+  top: number;
+};
+
+type BoxPoints = {
+  topLeft: Point;
+  topRight: Point;
+  bottomLeft: Point;
+  bottomRight: Point;
+};
+
 type CalculatedVector = [number, number];
 class Vector {
   startX: number;
@@ -114,43 +128,92 @@ class Monster {
     this.creatureVx = creatureVx;
     this.creatureVy = creatureVy;
   }
-
-  getVector(): Vector {
-    return {
-      startX: this.creatureX,
-      endX: this.creatureX + this.creatureVx,
-      startY: this.creatureY,
-      endY: this.creatureY + this.creatureVy,
-    };
-  }
-
-  getStartPositon(): { x: number; y: number } {
-    return {
-      x: this.creatureX,
-      y: this.creatureY,
-    };
-  }
-
-  getEndPosition(): { x: number; y: number } {
-    return {
-      x: this.creatureX + this.creatureVx,
-      y: this.creatureY + this.creatureVy,
-    };
-  }
-
-  getMonsterRectangle() {
-    const startPos = this.getStartPositon();
-    const endPos = this.getEndPosition();
-
-    return {
-      minX: Math.min(startPos.x, endPos.x),
-      maxX: Math.max(startPos.x, endPos.x),
-      minY: Math.min(startPos.y, endPos.y),
-      maxY: Math.max(startPos.y, endPos.y),
-    };
-  }
 }
 
+class VisibleMonster {
+  detectedByDrone: number[] = [];
+  dronesItCanSee: number[] = [];
+  agressiveTowards: number | null = null;
+
+  constructor(
+    public monster: Monster,
+    private drones: Drone[]
+  ) {
+    this.calculateDronesItCanSee();
+    this.calculateVisibleBy();
+  }
+
+  read() {
+    return {
+      monster: this.monster,
+      detectedByDrone: this.detectedByDrone,
+      dronesItCanSee: this.dronesItCanSee,
+      agressiveTowards: this.agressiveTowards,
+    };
+  }
+
+  calculateVisibleBy() {
+    // light on 2000 units
+    // light off 800
+    // we can see 300 units past the light
+    const monsterPoint = monster_getStartPositon(this.monster);
+
+    this.drones.forEach((d) => {
+      const dronePoint = d.getPosition();
+      const distance = distanceBetweenPoints(monsterPoint, dronePoint);
+
+      if (d.isLightOn && distance <= 2000 + 300) {
+        this.detectedByDrone.push(d.droneId);
+      } else if (!d.isLightOn && distance <= 800 + 300) {
+        this.detectedByDrone.push(d.droneId);
+      }
+    });
+  }
+
+  calculateDronesItCanSee() {
+    this.drones.forEach((d) => {
+      const dronePoint = d.getPosition();
+      const distance = distanceBetweenPoints(
+        monster_getStartPositon(this.monster),
+        dronePoint
+      );
+
+      if (d.isLightOn && distance <= 2000) {
+        this.dronesItCanSee.push(d.droneId);
+      } else if (!d.isLightOn && distance <= 800) {
+        this.dronesItCanSee.push(d.droneId);
+      }
+    });
+
+    if (this.dronesItCanSee.length === 1) {
+      this.agressiveTowards = this.dronesItCanSee[0];
+    } else if (this.dronesItCanSee.length > 1) {
+      this.dronesItCanSee.sort((a, b) => {
+        // sort by distance to drone shortest first
+        const distanceA = distanceBetweenPoints(
+          monster_getStartPositon(this.monster),
+          this.drones.find((d) => d.droneId === a)!.getPosition()
+        );
+        const distanceB = distanceBetweenPoints(
+          monster_getStartPositon(this.monster),
+          this.drones.find((d) => d.droneId === b)!.getPosition()
+        );
+        return distanceA - distanceB;
+      });
+      this.agressiveTowards = this.dronesItCanSee[0];
+    } else {
+      this.agressiveTowards = null;
+    }
+  }
+
+  canSeeDrone(droneId: number): boolean {
+    return this.dronesItCanSee.includes(droneId);
+  }
+
+  seenByDrone(droneId: number): boolean {
+    return this.detectedByDrone.includes(droneId);
+  }
+}
 class GameState {
   creatureCount: number;
   creatures: Creature[] = [];
@@ -171,6 +234,7 @@ class GameState {
   radarBlips: RadarBlip[];
   targetFish: number[];
   turns: number = 0;
+  visibleMonsters: VisibleMonster[] = [];
 
   monsters: { [key: number]: Monster } = {};
 
@@ -190,10 +254,15 @@ class GameState {
     // debug(`foeDrones ${JSON.stringify(this.foeDrones)}`);
     // debug(`foeDroneCount ${JSON.stringify(this.foeDroneCount)}`);
     // debug(`droneScans ${JSON.stringify(this.droneScans)}`);
-    debug(`visibleCreatures ${JSON.stringify(this.visibleCreatures)}`);
+    // debug(`visibleCreatures ${JSON.stringify(this.visibleCreatures.fill(c => c.type === -1))}`);
     // debug(`radarBlips ${JSON.stringify(this.radarBlips)}`);
     // debug(`monsters ${JSON.stringify(this.monsters)}`);
     // debug(`badGuys ${JSON.stringify(this.monsters)}`);
+    debug(
+      `visibleMonsters ${JSON.stringify(
+        this.visibleMonsters.map((m) => m.read())
+      )}`
+    );
   }
 
   readGameState() {
@@ -212,6 +281,7 @@ class GameState {
     this.readVisibleCreatures();
     this.readRadarBlips();
     this.updateMonsterFromVisibleCreatures();
+    this.updateVisibleMonsters();
 
     // update fishs with zone and scans
     this.creatures.forEach((c) => {
@@ -265,26 +335,6 @@ class GameState {
       this.monsters[monster.creatureId].creatureX = monster.creatureX;
       this.monsters[monster.creatureId].creatureY = monster.creatureY;
       this.monsters[monster.creatureId].lastSeenTurn = this.turns;
-    });
-  }
-
-  estimateMonsterPosition(monsters: Monster[]) {
-    // update the monsters vector based on the last known position and velocity
-    // if the monster reaches and edge the velocity is reversed
-
-    // the boundaries are 0, 1000
-
-    monsters.forEach((m) => {
-      if (m.creatureX === 0 || m.creatureX === 10000) {
-        m.creatureVx = m.creatureVx * -1;
-      }
-
-      if (m.creatureY === 0 || m.creatureY === 10000) {
-        m.creatureVy = m.creatureVy * -1;
-      }
-
-      m.creatureX = m.creatureX + m.creatureVx;
-      m.creatureY = m.creatureY + m.creatureVy;
     });
   }
 
@@ -366,7 +416,6 @@ class GameState {
     const myDroneCount: number = parseInt(readline());
     for (let i = 0; i < myDroneCount; i++) {
       var inputs: string[] = readline().split(" ");
-      debug(`inputs ${JSON.stringify(inputs)}`);
       const droneId: number = parseInt(inputs[0]);
       const droneX: number = parseInt(inputs[1]);
       const droneY: number = parseInt(inputs[2]);
@@ -468,6 +517,15 @@ class GameState {
     }
   }
 
+  private updateVisibleMonsters() {
+    this.visibleMonsters = this.visibleCreatures
+      .filter((c) => this.creatureDic[c.creatureId].type === -1)
+      .map((c) => {
+        const m = this.monsters[c.creatureId];
+        return new VisibleMonster(m, this.myDrones);
+      });
+  }
+
   private readRadarBlips() {
     const radarBlipCount: number = parseInt(readline());
     for (let i = 0; i < radarBlipCount; i++) {
@@ -482,40 +540,21 @@ class GameState {
 
 interface DroneStrategy {
   completed: boolean;
-  nextPosition(): Point | undefined;
+  nextPosition():
+    | { strat: string; point: Point; shouldTurnOnLight: boolean }
+    | undefined;
 }
 
-class DiveAndRise implements DroneStrategy {
-  distanceToPoint: number = 650;
+class Wait implements DroneStrategy {
   completed: boolean = false;
-  points: Point[] = [];
-
-  constructor(
-    points: Point[],
-    private drone: Drone
-  ) {
-    this.points = points;
-  }
-
-  nextPosition(): Point | undefined {
-    const dronePosition = this.drone.getPosition();
-    const nextPoint = this.points[0];
-
-    if (!nextPoint) return undefined;
-
-    if (arePointsInRange(dronePosition, nextPoint, this.distanceToPoint)) {
-      this.points.shift();
-    }
-
-    if (!this.points.length) {
-      this.completed = true;
-      return undefined;
-    }
-
-    return nextPoint;
+  nextPosition() {
+    return {
+      strat: "Wait",
+      point: { x: 0, y: 0 },
+      shouldTurnOnLight: false,
+    };
   }
 }
-
 class YOLO implements DroneStrategy {
   distanceToPoint: number = 500;
   completed: boolean = false;
@@ -539,54 +578,33 @@ class YOLO implements DroneStrategy {
   }
 
   monstersThatSeeMe(turns: number = 3): Monster[] {
-    const monstersThatSeeMe = gameState.visibleCreatures.filter((c) => {
-      const monster = gameState.creatureDic[c.creatureId];
-      return monster.type === -1;
-    });
+    const monstersAggresiveTowardsMe = this.gameState.visibleMonsters
+      .filter((m) => m.agressiveTowards === this.drone.droneId)
+      .map((m) => m.monster);
 
-    const monstersISawBefore = Object.values(this.gameState.monsters).filter(
-      (m) => m.lastSeenTurn >= this.gameState.turns - turns
-    );
+    const monstersISawBefore = Object.values(this.gameState.monsters)
+      .filter((m) => m.lastSeenTurn >= this.gameState.turns - turns)
+      .map((m) => {
+        const estimatedMonster = Object.assign({}, m);
+        estimateMonsterPosition(estimatedMonster, turns);
+        return estimatedMonster;
+      })
+      .filter((m) => {
+        // remove monsters aggressive towards me
+        return !monstersAggresiveTowardsMe.includes(m);
+      });
 
-    const monsters = monstersThatSeeMe.map((m) => {
+    const monsters = monstersAggresiveTowardsMe.map((m) => {
       return gameState.monsters[m.creatureId];
     });
 
-    monstersISawBefore.forEach((m) => {
-      if (!monsters.find((m2) => m2.creatureId === m.creatureId)) {
-        // clone monster
-        const cloneMonster = Object.assign({}, m);
-
-        const turnsSinceIveSeenMonster =
-          this.gameState.turns - cloneMonster.lastSeenTurn;
-        cloneMonster.creatureX =
-          cloneMonster.creatureX +
-          cloneMonster.creatureVx * turnsSinceIveSeenMonster;
-        cloneMonster.creatureY =
-          cloneMonster.creatureY +
-          cloneMonster.creatureVy * turnsSinceIveSeenMonster;
-        monsters.push(cloneMonster);
-      }
-    });
-
-    // clone Monsters
-    const cloneMonsters = monsters.map((m) => Object.assign({}, m));
-
-    const dronePosition = this.drone.getPosition();
-    cloneMonsters.forEach((m) => {
-      const monsterPoint = this.pointFromCreature(m);
-      // const vector = this.createVector(monsterPoint, this.drone.getPosition());
-      // const limitedVector = this.limitVectorLength(vector, this.monsterSpeed);
-      m.creatureVx = Math.floor(dronePosition.x - monsterPoint.x);
-      m.creatureVy = Math.floor(dronePosition.y - monsterPoint.y);
-    });
-
-    return cloneMonsters;
+    return [...monsters, ...monstersISawBefore];
   }
 
   updateNextPointToAvoidMonsterCollisions(
+    drone: Drone,
     nextPoint: Point,
-    monsters: VisibleCreature[]
+    monsters: Monster[]
   ): Point {
     // drone max speed is 600
     // monster speed is 540
@@ -600,32 +618,15 @@ class YOLO implements DroneStrategy {
     const pointsInBounds = _allPointsInRadius.filter((p) => {
       return p.x >= 0 && p.x <= 10000 && p.y >= 0 && p.y <= 10000;
     });
-    debug(`allPointsInRadius ${JSON.stringify(pointsInBounds)}`);
-
-    // safe points are at least 540 away from the monster
-
-    const monsterVectors = monsters.map((m) => {
-      return getVectorFromVisibleCreature(m);
-    });
 
     const podPosition = this.drone.getPosition();
 
     const safePoints = pointsInBounds.filter((safePoint) => {
-      const safeDistance = 550;
+      const safeDistance = 700;
 
       // check if path comes close to any monsterVectors
-      const pathsComeCloseToMonster = monsterVectors.some((monsterVector) => {
-        return isWithinExpandedBox(
-          {
-            startX: podPosition.x,
-            startY: podPosition.y,
-            endX: safePoint.x,
-            endY: safePoint.y,
-          },
-          monsterVector,
-          safeDistance
-        );
-        // return isPointNearVector(safePoint, monsterVector, safeDistance);
+      const pathsComeCloseToMonster = monsters.some((monster) => {
+        return isPointWithinMontersBox(safePoint, monster, safeDistance);
       });
 
       // if path comes close to monster we can't go there
@@ -633,7 +634,7 @@ class YOLO implements DroneStrategy {
       return true;
     });
 
-    debug(`safePoints ${JSON.stringify(safePoints)}`);
+    debug(`${this.drone.droneId} safePoints ${JSON.stringify(safePoints)}`);
 
     // sort safe points by distance to nextPoint closest first
     const sortedPoints = safePoints.sort((a, b) => {
@@ -642,11 +643,17 @@ class YOLO implements DroneStrategy {
       return distanceA - distanceB;
     });
 
+    if (!sortedPoints[0]) {
+      return {
+        x: drone.getPosition().x + monsters[0].creatureVx + 500,
+        y: drone.getPosition().y + monsters[0].creatureVy + 500,
+      };
+    }
+
     return sortedPoints[0];
   }
 
-  nextPosition(): Point | undefined {
-    debug(`turn ${this.gameState.turns}`);
+  nextPosition() {
     const dronePosition = this.drone.getPosition();
     let nextPoint = this.points[0];
 
@@ -662,26 +669,36 @@ class YOLO implements DroneStrategy {
       return undefined;
     }
 
-    debug(`nextPoint ${JSON.stringify(nextPoint)}`);
+    const monsters = this.monstersThatSeeMe();
 
-    debug(`dronePosition ${JSON.stringify(dronePosition)}`);
-    const _monsters = this.monstersThatSeeMe();
+    let shouldTurnOnLight =
+      this.gameState.turns % 3 === 0 ||
+      (this.drone.avoidance > -1 &&
+        this.gameState.turns - this.drone.avoidance < 2);
 
-    // remove duplicate monsters
-    const monsters = _monsters.filter(
-      (m, index) => _monsters.indexOf(m) === index
-    );
-    debug(`close monsters ${JSON.stringify(monsters)}`);
-
-    if (!monsters.length) return nextPoint;
+    if (!monsters.length) {
+      this.drone.avoidance = -1;
+      return {
+        strat: "YOLO",
+        point: nextPoint,
+        shouldTurnOnLight: shouldTurnOnLight,
+      };
+    }
 
     const newPoint = this.updateNextPointToAvoidMonsterCollisions(
+      this.drone,
       nextPoint,
       monsters
     );
+    this.drone.avoidance = this.gameState.turns;
 
-    debug(`newPoint ${JSON.stringify(newPoint)}`);
-    return newPoint;
+    shouldTurnOnLight = false;
+
+    return {
+      strat: "YOLO",
+      point: newPoint,
+      shouldTurnOnLight: shouldTurnOnLight,
+    };
   }
 }
 
@@ -701,6 +718,19 @@ function getPointsInCircle(
   return points;
 }
 
+function limitVectorLength(vector: Vector, length: number): Vector {
+  const dx = vector.endX - vector.startX;
+  const dy = vector.endY - vector.startY;
+  const vectorLength = Math.sqrt(dx * dx + dy * dy);
+  const ratio = length / vectorLength;
+  return {
+    startX: vector.startX,
+    startY: vector.startY,
+    endX: vector.startX + dx * ratio,
+    endY: vector.startY + dy * ratio,
+  };
+}
+
 function getVectorFromVisibleCreature(creature: VisibleCreature): Vector {
   return {
     startX: creature.creatureX,
@@ -717,12 +747,13 @@ class Drone {
   emergency: number;
   battery: number;
   scans: number[] = [];
-
+  isLightOn: boolean;
   initialX: number;
   targetPoition: { x: number; y: number } = { x: 0, y: 0 };
   isLeft: boolean;
+  avoidance: number = -1;
 
-  strategy: DroneStrategy;
+  strategy: DroneStrategy[];
 
   resetTank() {
     this.scans = [];
@@ -756,10 +787,12 @@ class Drone {
   }
 
   wait(light: boolean, message: string = "") {
+    this.isLightOn = light;
     console.log(`WAIT ${light ? 1 : 0} ${message}`);
   }
 
   move(x: number, y: number, light: boolean, message: string = "") {
+    this.isLightOn = light;
     console.log(`MOVE ${x} ${y} ${light ? 1 : 0} ${message}`);
   }
 
@@ -772,28 +805,29 @@ class Drone {
     // );
   }
 
-  execute(debug: boolean, turn: number): void {
-    const nextTarget = this.strategy.nextPosition();
+  execute(_debug: boolean, turn: number): void {
+    let nextTarget = this.strategy[0].nextPosition();
+    while (!nextTarget) {
+      this.strategy.shift();
+      nextTarget = this.strategy[0].nextPosition();
+    }
 
-    if (debug) this.debugPosition();
+    if (_debug) this.debugPosition();
 
     if (!nextTarget) {
       this.targetLocation = { x: -1, y: -1 };
-      this.wait(this.shouldTurnOnLight);
+      this.wait(false);
       return;
     }
 
-    this.targetLocation = nextTarget;
+    this.targetLocation = nextTarget.point;
 
-    if (debug) this.debugPosition();
-
-    // should turn light on every 3 turns
-    this.shouldTurnOnLight = gameState.turns % 3 === 0;
+    if (_debug) this.debugPosition();
 
     this.move(
       this.targetLocation.x,
       this.targetLocation.y,
-      this.shouldTurnOnLight
+      nextTarget.shouldTurnOnLight
     );
   }
 }
@@ -812,37 +846,29 @@ while (true) {
     // set drone strategies
     myDrones.forEach((d, index) => {
       // if (index === 0) {
-      d.strategy = new YOLO(
-        [
-          { x: d.droneX, y: 8500 },
-          { x: d.droneX, y: 400 },
-          { x: d.droneX, y: 8500 },
-          { x: d.droneX, y: 400 },
-          { x: d.droneX, y: 8500 },
-          { x: d.droneX, y: 400 },
-          { x: d.droneX, y: 8500 },
-          { x: d.droneX, y: 400 },
-          { x: d.droneX, y: 8500 },
-          { x: d.droneX, y: 400 },
-        ],
-        d,
-        gameState
-      );
-      // } else {
-      // d.strategy = new DiveAndRise(
-      //   [
-      //     { x: 1300, y: 3000 },
-      //     { x: 8500, y: 3000 },
-      //     { x: 8500, y: 500 },
-      //   ],
-      //   d
-      // );
-      // }
+      d.strategy = [
+        new YOLO(
+          [
+            { x: d.droneX, y: 8500 },
+            { x: d.droneX, y: 400 },
+            { x: d.droneX, y: 8500 },
+            { x: d.droneX, y: 400 },
+            { x: d.droneX, y: 8500 },
+            { x: d.droneX, y: 400 },
+            { x: d.droneX, y: 8500 },
+            { x: d.droneX, y: 400 },
+            { x: d.droneX, y: 8500 },
+            { x: d.droneX, y: 400 },
+          ],
+          d,
+          gameState
+        ),
+        new Wait(),
+      ];
     });
   }
 
   myDrones.forEach((d) => {
-    d.shouldTurnOnLight = gameState.turns % 3 === 0;
     d.execute(true, gameState.turns);
   });
 }
@@ -850,10 +876,6 @@ while (true) {
 function debug(message: string) {
   printErr(message);
 }
-
-// function distanceBetweenPoints(a: Point, b: Point): number {
-//   return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
-// }
 
 function closestPointOnLineSegment(point: Point, vector: Vector): Point {
   const dx = vector.endX - vector.startX;
@@ -908,9 +930,179 @@ function isPointNearVector(
   }
 }
 
+function createVectorBox(vector: Vector, D: number): Box {
+  const box = {
+    left: Math.min(vector.startX, vector.endX) - D,
+    right: Math.max(vector.startX, vector.endX) + D,
+    bottom: Math.min(vector.startY, vector.endY) - D,
+    top: Math.max(vector.startY, vector.endY) + D,
+  };
+  return box;
+}
+
+function createVectorBoxPoints(vector: Vector, D: number): Point[] {
+  // Calculate the vector direction
+  let dx: number = vector.endX - vector.startX;
+  let dy: number = vector.endY - vector.startY;
+
+  // Calculate the angle of the vector
+  let angle: number = Math.atan2(dy, dx);
+
+  // Define the rotation matrix
+  let rotation_matrix: number[][] = [
+    [Math.cos(angle), -Math.sin(angle)],
+    [Math.sin(angle), Math.cos(angle)],
+  ];
+
+  // Rotate the vector
+  let rotated_vector: number[] = [
+    rotation_matrix[0][0] * dx + rotation_matrix[0][1] * dy,
+    rotation_matrix[1][0] * dx + rotation_matrix[1][1] * dy,
+  ];
+
+  // The bounding box in the rotated system has corners at (0, 0), (dx, 0), (dx, dy), and (0, dy)
+  let bbox_rotated: number[][] = [
+    [0, 0],
+    [rotated_vector[0], 0],
+    [rotated_vector[0], rotated_vector[1]],
+    [0, rotated_vector[1]],
+  ];
+
+  debug(`bbox_rotated ${JSON.stringify(bbox_rotated)}`);
+
+  // Rotate the bounding box back to the original coordinate system
+  let bbox: number[][] = bbox_rotated.map((point) => [
+    rotation_matrix[0][0] * point[0] + rotation_matrix[1][0] * point[1],
+    rotation_matrix[0][1] * point[0] + rotation_matrix[1][1] * point[1],
+  ]);
+
+  // Translate the bounding box to the start of the vector
+  bbox = bbox.map((point) => [
+    point[0] + vector.startX,
+    point[1] + vector.startY,
+  ]);
+
+  // Convert the bounding box to an array of Points
+  let points: Point[] = bbox.map((point) => ({
+    x: Math.round(point[0]),
+    y: Math.round(point[1]),
+  }));
+
+  return points;
+}
+
+function createVectorBoxPoints_v2(vector: Vector, D: number): Point[] {
+  const box: Point[] = [
+    rotateAndScale(vector, D, "counterclockwise"),
+    rotateAndScale(vector, D, "clockwise"),
+    rotateAndScale(revertVector(vector), D, "counterclockwise"),
+    rotateAndScale(revertVector(vector), D, "clockwise"),
+  ];
+
+  return box;
+}
+
+function revertVector(vector: Vector): Vector {
+  return {
+    startX: vector.endX,
+    startY: vector.endY,
+    endX: vector.startX,
+    endY: vector.startY,
+  };
+}
+
+// returns  true if the point is within the box
+function isPointWithinMontersBox(
+  point: Point,
+  monster: Monster,
+  D: number
+): boolean {
+  if (distanceBetweenPoints(point, monster_getStartPositon(monster)) < D)
+    return true;
+  if (distanceBetweenPoints(point, monster_getEndPosition(monster)) < D)
+    return true;
+
+  const monsterbox = createVectorBoxPoints_v2(monster_getVector(monster), D);
+
+  return isPointInBox(point, monsterbox);
+}
+
+function isPointInBox(point: Point, box: Point[]): boolean {
+  let inside: boolean = false;
+  for (let i = 0, j = box.length - 1; i < box.length; j = i++) {
+    let xi: number = box[i].x,
+      yi: number = box[i].y;
+    let xj: number = box[j].x,
+      yj: number = box[j].y;
+
+    let intersect: boolean =
+      yi > point.y !== yj > point.y &&
+      point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+
+  return inside;
+}
+
+function rotateAndScale(
+  vector: Vector,
+  D: number,
+  rotation: "clockwise" | "counterclockwise" = "clockwise"
+): Point {
+  // Calculate the direction vector of the original vector
+  let dx: number = vector.endX - vector.startX;
+  let dy: number = vector.endY - vector.startY;
+
+  // Rotate the direction vector by 90 degrees (clockwise)
+  let rotated_dx: number = dy;
+  let rotated_dy: number = -dx;
+
+  if (rotation === "counterclockwise") {
+    // Rotate the direction vector by 90 degrees (counterclockwise)
+    rotated_dx = -dy;
+    rotated_dy = dx;
+  }
+
+  // Normalize the rotated direction vector
+  let magnitude: number = Math.sqrt(
+    rotated_dx * rotated_dx + rotated_dy * rotated_dy
+  );
+  let direction: { x: number; y: number } = {
+    x: rotated_dx / magnitude,
+    y: rotated_dy / magnitude,
+  };
+
+  // Scale the direction vector by the desired length D
+  let scaled_direction: { x: number; y: number } = {
+    x: direction.x * D,
+    y: direction.y * D,
+  };
+
+  // Create the new vector
+  let newVector: Vector = new Vector();
+  newVector.startX = vector.startX;
+  newVector.startY = vector.startY;
+  newVector.endX = newVector.startX + scaled_direction.x;
+  newVector.endY = newVector.startY + scaled_direction.y;
+
+  return {
+    x: Math.round(newVector.endX),
+    y: Math.round(newVector.endY),
+  };
+}
+
+function createBoxWithDimensions(width: number, height: number): Point[] {
+  return [
+    { x: 0, y: 0 },
+    { x: width, y: 0 },
+    { x: width, y: height },
+    { x: 0, y: height },
+  ];
+}
+
 function isWithinExpandedBox(
   v1: Vector,
-  monsterrVector: Vector,
+  monsterVector: Vector,
   D: number
 ): boolean {
   // Calculate the bounding boxes
@@ -920,22 +1112,81 @@ function isWithinExpandedBox(
     bottom: Math.min(v1.startY, v1.endY),
     top: Math.max(v1.startY, v1.endY),
   };
-  const box2 = {
-    left: Math.min(monsterrVector.startX, monsterrVector.endX) - D,
-    right: Math.max(monsterrVector.startX, monsterrVector.endX) + D,
-    bottom: Math.min(monsterrVector.startY, monsterrVector.endY) - D,
-    top: Math.max(monsterrVector.startY, monsterrVector.endY) + D,
-  };
+  const monsterBox = createVectorBox(monsterVector, D);
 
   // Check if v1 is within the expanded bounding box of v2
   if (
-    box1.left >= box2.left &&
-    box1.right <= box2.right &&
-    box1.bottom >= box2.bottom &&
-    box1.top <= box2.top
+    box1.left >= monsterBox.left &&
+    box1.right <= monsterBox.right &&
+    box1.bottom >= monsterBox.bottom &&
+    box1.top <= monsterBox.top
   ) {
     return true;
   }
 
   return false;
+}
+
+function estimateMonsterPosition(monster: Monster, turns: number = 1) {
+  // update the monsters vector based on the last known position and velocity
+  // if the monster reaches and edge the velocity is reversed
+
+  // the boundaries are 0, 1000
+  // monster moves at 270 units per turn max
+  // monster minY = 2500
+  // monster maxY = 10000
+  // monster minX = 0
+  // monster maxX = 10000
+
+  for (let i = 0; i < turns; i++) {
+    const mosterVector = monster_getVector(monster);
+    const limitedVector = limitVectorLength(mosterVector, 270);
+
+    monster.creatureX = limitedVector.endX;
+    monster.creatureY = limitedVector.endY;
+
+    // if monster is at an edge reverse the velocity
+    if (monster.creatureX <= 0 || monster.creatureX >= 10000) {
+      monster.creatureVx = monster.creatureVx * -1;
+    }
+
+    if (monster.creatureY <= 2500 || monster.creatureY >= 10000) {
+      monster.creatureVy = monster.creatureVy * -1;
+    }
+  }
+}
+
+function monster_getVector(monster: Monster): Vector {
+  return {
+    startX: monster.creatureX,
+    endX: monster.creatureX + monster.creatureVx,
+    startY: monster.creatureY,
+    endY: monster.creatureY + monster.creatureVy,
+  };
+}
+
+function monster_getStartPositon(monster: Monster): { x: number; y: number } {
+  return {
+    x: monster.creatureX,
+    y: monster.creatureY,
+  };
+}
+
+function monster_getEndPosition(monster: Monster): { x: number; y: number } {
+  return {
+    x: monster.creatureX + monster.creatureVx,
+    y: monster.creatureY + monster.creatureVy,
+  };
+}
+
+function monster_getMonsterRectangle(monster: Monster) {
+  const startPos = monster_getStartPositon(monster);
+  const endPos = monster_getEndPosition(monster);
+
+  return {
+    minX: Math.min(startPos.x, endPos.x),
+    maxX: Math.max(startPos.x, endPos.x),
+    minY: Math.min(startPos.y, endPos.y),
+    maxY: Math.max(startPos.y, endPos.y),
+  };
 }
