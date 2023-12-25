@@ -167,43 +167,42 @@ class VisibleMonster {
       } else if (!d.isLightOn && distance <= 800 + 300) {
         this.detectedByDrone.push(d.droneId);
       }
+      this.agressiveTowards = this.detectedByDrone[0];
     });
   }
 
   calculateDronesItCanSee() {
-    this.drones.forEach((d) => {
-      const dronePoint = d.getPosition();
-      const distance = distanceBetweenPoints(
-        monster_getStartPositon(this.monster),
-        dronePoint
-      );
-
-      if (d.isLightOn && distance <= 2000) {
-        this.dronesItCanSee.push(d.droneId);
-      } else if (!d.isLightOn && distance <= 800) {
-        this.dronesItCanSee.push(d.droneId);
-      }
-    });
-
-    if (this.dronesItCanSee.length === 1) {
-      this.agressiveTowards = this.dronesItCanSee[0];
-    } else if (this.dronesItCanSee.length > 1) {
-      this.dronesItCanSee.sort((a, b) => {
-        // sort by distance to drone shortest first
-        const distanceA = distanceBetweenPoints(
-          monster_getStartPositon(this.monster),
-          this.drones.find((d) => d.droneId === a)!.getPosition()
-        );
-        const distanceB = distanceBetweenPoints(
-          monster_getStartPositon(this.monster),
-          this.drones.find((d) => d.droneId === b)!.getPosition()
-        );
-        return distanceA - distanceB;
-      });
-      this.agressiveTowards = this.dronesItCanSee[0];
-    } else {
-      this.agressiveTowards = null;
-    }
+    // this.drones.forEach((d) => {
+    //   const dronePoint = d.getPosition();
+    //   const distance = distanceBetweenPoints(
+    //     monster_getStartPositon(this.monster),
+    //     dronePoint
+    //   );
+    //   if (d.isLightOn && distance <= 2000) {
+    //     this.dronesItCanSee.push(d.droneId);
+    //   } else if (!d.isLightOn && distance <= 800) {
+    //     this.dronesItCanSee.push(d.droneId);
+    //   }
+    // });
+    // if (this.dronesItCanSee.length === 1) {
+    //   this.agressiveTowards = this.dronesItCanSee[0];
+    // } else if (this.dronesItCanSee.length > 1) {
+    //   this.dronesItCanSee.sort((a, b) => {
+    //     // sort by distance to drone shortest first
+    //     const distanceA = distanceBetweenPoints(
+    //       monster_getStartPositon(this.monster),
+    //       this.drones.find((d) => d.droneId === a)!.getPosition()
+    //     );
+    //     const distanceB = distanceBetweenPoints(
+    //       monster_getStartPositon(this.monster),
+    //       this.drones.find((d) => d.droneId === b)!.getPosition()
+    //     );
+    //     return distanceA - distanceB;
+    //   });
+    //   this.agressiveTowards = this.dronesItCanSee[0];
+    // } else {
+    //   this.agressiveTowards = null;
+    // }
   }
 
   canSeeDrone(droneId: number): boolean {
@@ -263,6 +262,39 @@ class GameState {
         this.visibleMonsters.map((m) => m.read())
       )}`
     );
+  }
+
+  getZ1UnscannedCreatures(): number[] {
+    const droneScans = this.myDrones.map((d) => d.scans).flat();
+    return this.creatures
+      .filter((c) => c.type !== -1)
+      .filter((c) => c.zone.id === 1)
+      .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
+      .filter((c) => !droneScans.includes(c.creatureId))
+      .filter((c) => !this.targetFish.includes(c.creatureId))
+      .map((c) => c.creatureId);
+  }
+
+  getZ2UnscannedCreatures(): number[] {
+    const droneScans = this.myDrones.map((d) => d.scans).flat();
+    return this.creatures
+      .filter((c) => c.type !== -1)
+      .filter((c) => c.zone.id === 2)
+      .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
+      .filter((c) => !droneScans.includes(c.creatureId))
+      .filter((c) => !this.targetFish.includes(c.creatureId))
+      .map((c) => c.creatureId);
+  }
+
+  getZ3UnscannedCreatures(): number[] {
+    const droneScans = this.myDrones.map((d) => d.scans).flat();
+    return this.creatures
+      .filter((c) => c.type !== -1)
+      .filter((c) => c.zone.id === 3)
+      .filter((c) => !this.myScannedCreatures.includes(c.creatureId))
+      .filter((c) => !droneScans.includes(c.creatureId))
+      .filter((c) => !this.targetFish.includes(c.creatureId))
+      .map((c) => c.creatureId);
   }
 
   readGameState() {
@@ -556,7 +588,7 @@ class Wait implements DroneStrategy {
   }
 }
 class YOLO implements DroneStrategy {
-  distanceToPoint: number = 500;
+  distanceToPoint: number = 450;
   completed: boolean = false;
   points: Point[] = [];
 
@@ -577,82 +609,6 @@ class YOLO implements DroneStrategy {
     };
   }
 
-  monstersThatSeeMe(turns: number = 3): Monster[] {
-    const monstersAggresiveTowardsMe = this.gameState.visibleMonsters
-      .filter((m) => m.agressiveTowards === this.drone.droneId)
-      .map((m) => m.monster);
-
-    const monstersISawBefore = Object.values(this.gameState.monsters)
-      .filter((m) => m.lastSeenTurn >= this.gameState.turns - turns)
-      .map((m) => {
-        const estimatedMonster = Object.assign({}, m);
-        estimateMonsterPosition(estimatedMonster, turns);
-        return estimatedMonster;
-      })
-      .filter((m) => {
-        // remove monsters aggressive towards me
-        return !monstersAggresiveTowardsMe.includes(m);
-      });
-
-    const monsters = monstersAggresiveTowardsMe.map((m) => {
-      return gameState.monsters[m.creatureId];
-    });
-
-    return [...monsters, ...monstersISawBefore];
-  }
-
-  updateNextPointToAvoidMonsterCollisions(
-    drone: Drone,
-    nextPoint: Point,
-    monsters: Monster[]
-  ): Point {
-    // drone max speed is 600
-    // monster speed is 540
-    const _allPointsInRadius = [
-      ...getPointsInCircle(this.drone.getPosition(), 600, 15),
-      ...getPointsInCircle(this.drone.getPosition(), 400, 15),
-      ...getPointsInCircle(this.drone.getPosition(), 200, 15),
-    ];
-
-    // remove points out of bounds 0, 10000
-    const pointsInBounds = _allPointsInRadius.filter((p) => {
-      return p.x >= 0 && p.x <= 10000 && p.y >= 0 && p.y <= 10000;
-    });
-
-    const podPosition = this.drone.getPosition();
-
-    const safePoints = pointsInBounds.filter((safePoint) => {
-      const safeDistance = 700;
-
-      // check if path comes close to any monsterVectors
-      const pathsComeCloseToMonster = monsters.some((monster) => {
-        return isPointWithinMontersBox(safePoint, monster, safeDistance);
-      });
-
-      // if path comes close to monster we can't go there
-      if (pathsComeCloseToMonster) return false;
-      return true;
-    });
-
-    debug(`${this.drone.droneId} safePoints ${JSON.stringify(safePoints)}`);
-
-    // sort safe points by distance to nextPoint closest first
-    const sortedPoints = safePoints.sort((a, b) => {
-      const distanceA = distanceBetweenPoints(a, nextPoint);
-      const distanceB = distanceBetweenPoints(b, nextPoint);
-      return distanceA - distanceB;
-    });
-
-    if (!sortedPoints[0]) {
-      return {
-        x: drone.getPosition().x + monsters[0].creatureVx + 500,
-        y: drone.getPosition().y + monsters[0].creatureVy + 500,
-      };
-    }
-
-    return sortedPoints[0];
-  }
-
   nextPosition() {
     const dronePosition = this.drone.getPosition();
     let nextPoint = this.points[0];
@@ -669,12 +625,14 @@ class YOLO implements DroneStrategy {
       return undefined;
     }
 
-    const monsters = this.monstersThatSeeMe();
+    const monsters = monstersThatSeeMe(
+      this.gameState.turns,
+      this.gameState,
+      this.drone
+    );
 
     let shouldTurnOnLight =
-      this.gameState.turns % 3 === 0 ||
-      (this.drone.avoidance > -1 &&
-        this.gameState.turns - this.drone.avoidance < 2);
+      this.gameState.turns % 3 === 0 && this.drone.droneY > 2000;
 
     if (!monsters.length) {
       this.drone.avoidance = -1;
@@ -685,20 +643,98 @@ class YOLO implements DroneStrategy {
       };
     }
 
-    const newPoint = this.updateNextPointToAvoidMonsterCollisions(
+    const newPoint = updateNextPointToAvoidMonsterCollisions(
       this.drone,
       nextPoint,
       monsters
     );
     this.drone.avoidance = this.gameState.turns;
 
-    shouldTurnOnLight = false;
-
     return {
       strat: "YOLO",
       point: newPoint,
       shouldTurnOnLight: shouldTurnOnLight,
     };
+  }
+}
+
+class ScanFish implements DroneStrategy {
+  completed: boolean = false;
+
+  constructor(
+    private drone: Drone,
+    private gameState: GameState
+  ) {}
+
+  nextPosition() {
+    const unscanned = [
+      ...this.gameState.getZ1UnscannedCreatures(),
+      ...this.gameState.getZ2UnscannedCreatures(),
+      ...this.gameState.getZ3UnscannedCreatures(),
+    ];
+
+    if (!unscanned.length) {
+      this.completed = true;
+      return undefined;
+    }
+
+    const creatureId = unscanned[0];
+    this.gameState.targetFish.push(creatureId);
+
+    var loc = this.gameState.radarBlips.find(
+      (r) => r.creatureId === creatureId
+    );
+    var radarLoc = loc?.radar;
+
+    let droneAction = {
+      strat: "ScanFish",
+      point: { x: 0, y: 0 },
+      shouldTurnOnLight: false,
+    };
+
+    if (this.drone.scans.length > 2) {
+      droneAction.point.x = this.drone.droneX;
+      droneAction.point.y = 499;
+    } else {
+      if (radarLoc === "TL") {
+        droneAction.point.x = this.drone.droneX - 600;
+        droneAction.point.y = this.drone.droneY - 600;
+      } else if (radarLoc === "TR") {
+        droneAction.point.x = this.drone.droneX + 600;
+        droneAction.point.y = this.drone.droneY - 600;
+      } else if (radarLoc === "BL") {
+        droneAction.point.x = this.drone.droneX - 600;
+        droneAction.point.y = this.drone.droneY + 600;
+      } else if (radarLoc === "BR") {
+        droneAction.point.x = this.drone.droneX + 600;
+        droneAction.point.y = this.drone.droneY + 600;
+      }
+    }
+
+    const monsters = monstersThatSeeMe(
+      this.gameState.turns,
+      this.gameState,
+      this.drone
+    );
+
+    droneAction.shouldTurnOnLight =
+      this.gameState.turns % 3 === 0 && this.drone.droneY > 2000;
+
+    if (!monsters.length) {
+      this.drone.avoidance = -1;
+      droneAction;
+    }
+
+    const newPoint = updateNextPointToAvoidMonsterCollisions(
+      this.drone,
+      droneAction.point,
+      monsters
+    );
+    this.drone.avoidance = this.gameState.turns;
+
+    droneAction.point = newPoint;
+
+    return droneAction;
   }
 }
 
@@ -851,18 +887,11 @@ while (true) {
           [
             { x: d.droneX, y: 8500 },
             { x: d.droneX, y: 400 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 400 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 400 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 400 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 400 },
           ],
           d,
           gameState
         ),
+        new ScanFish(d, gameState),
         new Wait(),
       ];
     });
@@ -1189,4 +1218,84 @@ function monster_getMonsterRectangle(monster: Monster) {
     minY: Math.min(startPos.y, endPos.y),
     maxY: Math.max(startPos.y, endPos.y),
   };
+}
+
+function monstersThatSeeMe(
+  turns: number = 3,
+  gameState: GameState,
+  drone: Drone
+): Monster[] {
+  const monstersAggresiveTowardsMe = gameState.visibleMonsters
+    .filter((m) => m.agressiveTowards === drone.droneId)
+    .map((m) => m.monster);
+
+  const monstersISawBefore = Object.values(gameState.monsters)
+    .filter((m) => m.lastSeenTurn >= gameState.turns - turns)
+    .map((m) => {
+      const estimatedMonster = Object.assign({}, m);
+      estimateMonsterPosition(estimatedMonster, turns);
+      return estimatedMonster;
+    })
+    .filter((m) => {
+      // remove monsters aggressive towards me
+      return !monstersAggresiveTowardsMe.includes(m);
+    });
+
+  const monsters = monstersAggresiveTowardsMe.map((m) => {
+    return gameState.monsters[m.creatureId];
+  });
+
+  return [...monsters, ...monstersISawBefore];
+}
+
+function updateNextPointToAvoidMonsterCollisions(
+  drone: Drone,
+  nextPoint: Point,
+  monsters: Monster[]
+): Point {
+  // drone max speed is 600
+  // monster speed is 540
+  const _allPointsInRadius = [
+    ...getPointsInCircle(drone.getPosition(), 600, 15),
+    ...getPointsInCircle(drone.getPosition(), 400, 15),
+    ...getPointsInCircle(drone.getPosition(), 200, 15),
+  ];
+
+  // remove points out of bounds 0, 10000
+  const pointsInBounds = _allPointsInRadius.filter((p) => {
+    return p.x >= 0 && p.x <= 10000 && p.y >= 0 && p.y <= 10000;
+  });
+
+  const podPosition = drone.getPosition();
+
+  const safePoints = pointsInBounds.filter((safePoint) => {
+    const safeDistance = 700;
+
+    // check if path comes close to any monsterVectors
+    const pathsComeCloseToMonster = monsters.some((monster) => {
+      return isPointWithinMontersBox(safePoint, monster, safeDistance);
+    });
+
+    // if path comes close to monster we can't go there
+    if (pathsComeCloseToMonster) return false;
+    return true;
+  });
+
+  debug(`${drone.droneId} safePoints ${JSON.stringify(safePoints)}`);
+
+  // sort safe points by distance to nextPoint closest first
+  const sortedPoints = safePoints.sort((a, b) => {
+    const distanceA = distanceBetweenPoints(a, nextPoint);
+    const distanceB = distanceBetweenPoints(b, nextPoint);
+    return distanceA - distanceB;
+  });
+
+  if (!sortedPoints[0]) {
+    return {
+      x: drone.getPosition().x + monsters[0].creatureVx + 500,
+      y: drone.getPosition().y + monsters[0].creatureVy + 500,
+    };
+  }
+
+  return sortedPoints[0];
 }
