@@ -959,7 +959,7 @@ while (true) {
     myDrones.forEach((d, index) => {
       const X1 = d.initialX < 5000 ? 2500 : 7500;
       const X2 = d.initialX < 5000 ? 1000 : 9000;
-      const X3 = d.initialX < 5000 ? 1000 : 9000;
+      const X3 = d.initialX < 5000 ? 2000 : 8000;
       const X4 = d.initialX < 5000 ? 3000 : 6000;
       d.strategy = [
         new YOLO(
