@@ -1,5 +1,7 @@
 // seed=-3331652981769725401
 // seed=seed=9218852014602741000
+//seed=-5392555195919260000
+
 
 //https://www.desmos.com/calculator/2rnqgoa6a4
 //https://www.convertcsv.com/json-to-csv.htm
@@ -692,7 +694,7 @@ class YOLO implements DroneStrategy {
     let shouldTurnOnLight =
       this.gameState.turns % 3 === 0 && this.drone.droneY > 2000;
 
-    if (this.gameState.getUnscannedCreatures().length === 0) {
+    if (this.gameState.getUnscannedCreatures().length <= 3) {
       nextPoint = {
         x: this.drone.droneX,
         y: 0,
