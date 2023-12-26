@@ -804,9 +804,6 @@ class ScanFish implements DroneStrategy {
 
     if (!monsters.length) {
       this.drone.avoidance = -1;
-      debug(
-        `Drone Scan ${this.drone.droneId} target ${droneAction.point.x} ${droneAction.point.y}`
-      );
       return droneAction;
     }
 
@@ -818,9 +815,6 @@ class ScanFish implements DroneStrategy {
     this.drone.avoidance = this.gameState.turns;
 
     droneAction.point = newPoint;
-    debug(
-      `Drone Scan ${this.drone.droneId} target ${droneAction.point.x} ${droneAction.point.y}`
-    );
     return droneAction;
   }
 }
@@ -977,8 +971,8 @@ while (true) {
     // set drone strategies
 
     myDrones.forEach((d, index) => {
-      const X1 = d.initialX < 5000 ? 2000 : 8000;
-      const X2 = d.initialX < 5000 ? 2000 : 8000;
+      const X1 = d.initialX < 5000 ? 2500 : 7500;
+      const X2 = d.initialX < 5000 ? 1000 : 9000;
       const X3 = d.initialX < 5000 ? 2000 : 8000;
       const X4 = d.initialX < 5000 ? 3000 : 6000;
       d.strategy = [
@@ -988,7 +982,7 @@ while (true) {
             { x: X2, y: 6500, distance: 800 },
             { x: X3, y: 8500, distance: 800 },
             { x: X4, y: 8500, distance: 800 },
-            { x: d.droneX, y: 450, distance: 100 },
+            { x: d.droneX, y: 0, distance: 100 },
           ],
           d,
           gameState
