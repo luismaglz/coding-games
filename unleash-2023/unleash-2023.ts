@@ -1,4 +1,6 @@
 // seed=-3331652981769725401
+// seed=seed=9218852014602741000
+
 //https://www.desmos.com/calculator/2rnqgoa6a4
 //https://www.convertcsv.com/json-to-csv.htm
 
@@ -621,9 +623,11 @@ interface DroneStrategy {
 }
 
 class Wait implements DroneStrategy {
+  constructor(private drone: Drone) {}
+
   completed: boolean = false;
   nextPosition() {
-    debug(`Drone Wait`);
+    debug(`${this.drone.droneId} Drone Wait`);
     return {
       strat: "Wait",
       point: { x: 0, y: 0 },
@@ -631,15 +635,19 @@ class Wait implements DroneStrategy {
     };
   }
 }
+
+interface YOLOPoint extends Point {
+  distance: number;
+}
+
 class YOLO implements DroneStrategy {
-  distanceToPoint: number = 450;
   completed: boolean = false;
-  points: Point[] = [];
+  points: YOLOPoint[] = [];
 
   monsterSpeed: number = 540;
 
   constructor(
-    points: Point[],
+    points: YOLOPoint[],
     private drone: Drone,
     private gameState: GameState
   ) {
@@ -660,7 +668,7 @@ class YOLO implements DroneStrategy {
 
     if (!nextPoint) return undefined;
 
-    if (arePointsInRange(dronePosition, nextPoint, this.distanceToPoint)) {
+    if (arePointsInRange(dronePosition, nextPoint, nextPoint.distance)) {
       this.points.shift();
       nextPoint = this.points[0];
     }
@@ -712,6 +720,7 @@ class ScanFish implements DroneStrategy {
   ) {}
 
   nextPosition() {
+    debug(`Drone ${this.drone.droneId} ScanFish`);
     const unscanned = [
       ...this.gameState.getUnscannedCreatures(),
       // ...this.gameState.getZ2UnscannedCreatures(),
@@ -948,41 +957,24 @@ while (true) {
     // set drone strategies
 
     myDrones.forEach((d, index) => {
-      const initialX = d.initialX < 5000 ? 2500 : 7500;
+      const X1 = d.initialX < 5000 ? 2500 : 7500;
+      const X2 = d.initialX < 5000 ? 1000 : 9000;
+      const X3 = d.initialX < 5000 ? 1000 : 9000;
+      const X4 = d.initialX < 5000 ? 3000 : 6000;
       d.strategy = [
         new YOLO(
           [
-            { x: initialX, y: 8500 },
-            { x: d.droneX, y: 0 },
+            { x: X1, y: 3500, distance: 800 },
+            { x: X2, y: 6500, distance: 800 },
+            { x: X3, y: 8500, distance: 800 },
+            { x: X4, y: 8500, distance: 800 },
+            { x: d.droneX, y: 450, distance: 10 },
           ],
           d,
           gameState
         ),
         new ScanFish(d, gameState),
-        new YOLO(
-          [
-            { x: d.droneX, y: 0 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 0 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 0 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 0 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 0 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 0 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 0 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 0 },
-            { x: d.droneX, y: 8500 },
-            { x: d.droneX, y: 0 },
-          ],
-          d,
-          gameState
-        ),
-        new Wait(),
+        new Wait(d),
       ];
     });
   }
@@ -1319,6 +1311,12 @@ function monstersThatSeeMe(
     .filter((m) => m.agressiveTowards === drone.droneId)
     .map((m) => m.monster);
 
+  debug(
+    `monstersAggresiveTowardsMe ${drone.droneId} ${JSON.stringify(
+      monstersAggresiveTowardsMe
+    )}`
+  );
+
   const monstersISawBefore = Object.values(gameState.monsters)
     .filter((m) => m.lastSeenTurn >= gameState.turns - turns)
     .map((m) => {
@@ -1335,7 +1333,12 @@ function monstersThatSeeMe(
     return gameState.monsters[m.creatureId];
   });
 
-  return [...monsters, ...monstersISawBefore];
+  monstersISawBefore.forEach((m) => {
+    if (!monsters.some((m) => m.creatureId === m.creatureId)) {
+      monsters.push(m);
+    }
+  });
+  return monsters;
 }
 
 function updateNextPointToAvoidMonsterCollisions(
@@ -1379,17 +1382,23 @@ function updateNextPointToAvoidMonsterCollisions(
   });
 
   if (!sortedPoints[0]) {
-    return findPointAwayFromMonsters(drone, monsters);
+    const newPoint = findPointAwayFromMonsters(drone, monsters);
+    if (!newPoint) return nextPoint;
   }
 
   return sortedPoints[0];
 }
 
 function findPointAwayFromMonsters(drone: Drone, monsters: Monster[]): Point {
-  const dist = 600;
+  const dist = 550;
   const _allPointsInRadius = [
-    ...getPointsInCircle(drone.getPosition(), 600, 30),
+    ...getPointsInCircle(drone.getPosition(), 600, 10),
     ...getPointsInCircle(drone.getPosition(), 550, 30),
+    ...getPointsInCircle(drone.getPosition(), 500, 30),
+    ...getPointsInCircle(drone.getPosition(), 450, 30),
+    ...getPointsInCircle(drone.getPosition(), 400, 30),
+    ...getPointsInCircle(drone.getPosition(), 350, 30),
+    ...getPointsInCircle(drone.getPosition(), 300, 30),
   ];
 
   // remove points out of bounds 0, 10000
@@ -1397,12 +1406,12 @@ function findPointAwayFromMonsters(drone: Drone, monsters: Monster[]): Point {
     .filter((p) => {
       return p.x >= 0 && p.x <= 10000 && p.y >= 0 && p.y <= 10000;
     })
-    .filter((p) => {
-      // remove points within 600 of a monster
-      return !monsters.some((m) => {
-        return distanceBetweenPoints(p, monster_getStartPositon(m)) < dist;
-      });
-    })
+    // .filter((p) => {
+    //   // remove points within 600 of a monster
+    //   return !monsters.some((m) => {
+    //     return distanceBetweenPoints(p, monster_getStartPositon(m)) < dist;
+    //   });
+    // })
     .filter((p) => {
       // remove points within 600 of where a monster will be next turn
       return !monsters.some((m) => {
@@ -1429,6 +1438,7 @@ function findPointAwayFromMonsters(drone: Drone, monsters: Monster[]): Point {
     return distanceB - distanceA;
   });
 
+  debug(`safe monster ${JSON.stringify(monsters)}`);
   debug(`${drone.droneId} backup safePoints ${JSON.stringify(sortedPoints)}`);
   return sortedPoints[sortedPoints.length - 1];
 }
