@@ -2,6 +2,9 @@
 // seed=seed=9218852014602741000
 //seed=-5392555195919260000
 
+//seed=6816608283357797000
+
+// https://stackblitz.com/edit/typescript-n8dfxe?file=index.ts
 
 //https://www.desmos.com/calculator/2rnqgoa6a4
 //https://www.convertcsv.com/json-to-csv.htm
@@ -642,7 +645,7 @@ interface YOLOPoint extends Point {
   distance: number;
 }
 
-class YOLO implements DroneStrategy {
+class NavigateToPoint implements DroneStrategy {
   completed: boolean = false;
   points: YOLOPoint[] = [];
 
@@ -896,7 +899,22 @@ class Drone {
     this.battery = battery;
 
     this.initialX = droneX;
-    debug(`Drone ${this.droneId} initialX ${this.initialX}`);
+  }
+
+  print() {
+    return {
+      droneId: this.droneId,
+      droneX: this.droneX,
+      droneY: this.droneY,
+      emergency: this.emergency,
+      battery: this.battery,
+      scans: this.scans,
+      isLightOn: this.isLightOn,
+      initialX: this.initialX,
+      targetPoition: this.targetPoition,
+      isLeft: this.isLeft,
+      avoidance: this.avoidance,
+    };
   }
 
   getPosition(): Point {
@@ -978,12 +996,12 @@ while (true) {
       const X3 = d.initialX < 5000 ? 2000 : 8000;
       const X4 = d.initialX < 5000 ? 3000 : 6000;
       d.strategy = [
-        new YOLO(
+        new NavigateToPoint(
           [
-            { x: X1, y: 3500, distance: 800 },
-            { x: X2, y: 6500, distance: 800 },
-            { x: X3, y: 8500, distance: 800 },
-            { x: X4, y: 8500, distance: 800 },
+            { x: X1, y: 2500, distance: 800 },
+            { x: X2, y: 7500, distance: 800 },
+            { x: X3, y: 9999, distance: 1000 },
+            { x: X4, y: 9999, distance: 1000 },
             { x: d.droneX, y: 0, distance: 100 },
           ],
           d,
@@ -996,6 +1014,7 @@ while (true) {
   }
 
   myDrones.forEach((d) => {
+    debug(`Drone ${d.droneId} ${JSON.stringify(d.print())}`);
     d.execute(true, gameState.turns);
   });
 }
@@ -1376,7 +1395,7 @@ function updateNextPointToAvoidMonsterCollisions(
   });
 
   const safePoints = pointsInBounds.filter((safePoint) => {
-    const safeDistance = 700;
+    const safeDistance = 545;
 
     // check if path comes close to any monsterVectors
     const pathsComeCloseToMonster = monsters.some((monster) => {
