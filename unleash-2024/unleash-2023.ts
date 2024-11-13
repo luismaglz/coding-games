@@ -104,7 +104,7 @@ class Entity {
   type: EntityTypes;
   owner: number;
   organId: number;
-  organDir: string;
+  organDir: CardinalDirection;
   organParentId: number;
   organRootId: number;
 }
@@ -272,7 +272,7 @@ class GameState {
       entity.type = type as EntityType;
       entity.owner = owner;
       entity.organId = organId;
-      entity.organDir = organDir;
+      entity.organDir = organDir as CardinalDirection;
       entity.organParentId = organParentId;
       entity.organRootId = organRootId;
 
@@ -305,55 +305,6 @@ class GameState {
     this.turns++;
   }
 
-  findClosestLetter(organ: Entity): Entity {
-    const letters = this.getTheLetters();
-
-    // console.log(JSON.stringify(letters));
-
-    const distanceArray = letters.map((l) => {
-      return calculateDistance(organ.x, organ.y, l.x, l.y);
-    });
-
-    const minIndex = findIndexOfMin(distanceArray);
-
-    return letters[minIndex];
-  }
-
-  findCLosestLetterAndOrgan(rootId: number): {
-    organ: Entity;
-    letter: Entity;
-    distance: number;
-  } {
-    const organLetterCombo: {
-      organ: Entity;
-      letter: Entity;
-      distance: number;
-    }[] = [];
-    const letters = this.getTheLetters();
-
-    this.entities
-      .filter((e) => e.organRootId === rootId)
-      .forEach((e) => {
-        letters.forEach((l) => {
-          organLetterCombo.push({
-            organ: e,
-            letter: l,
-            distance: calculateDistance(e.x, e.y, l.x, l.y),
-          });
-        });
-      });
-
-    let closest = organLetterCombo[0];
-
-    organLetterCombo.forEach((o) => {
-      if (o.distance <= closest.distance) {
-        closest = o;
-      }
-    });
-
-    return closest;
-  }
-
   getTheLetters(): Entity[] {
     const letters = this.entities.filter((e) => {
       return (
@@ -364,55 +315,8 @@ class GameState {
     return letters;
   }
 
-  getEntitiesThatCanGrow(rootId: number): {
-    entity: Entity;
-    availableDirections: Direction[];
-  }[] {
-    const entitiesWithDirections: {
-      entity: Entity;
-      availableDirections: Direction[];
-    }[] = [];
-    const myEntities = this.entities.filter(
-      (e) =>
-        e.owner === 1 &&
-        (e.type === "BASIC" || e.type === "ROOT") &&
-        e.organRootId === rootId
-    );
-
-    myEntities.forEach((e) => {
-      const top = this.getEntity(e.x, e.y + 1);
-      const bottom = this.getEntity(e.x, e.y - 1);
-      const left = this.getEntity(e.x - 1, e.y);
-      const right = this.getEntity(e.x + 1, e.y);
-
-      const directions: Direction[] = [
-        top || "TOP",
-        bottom || "BOTTOM",
-        left || "LEFT",
-        right || "RIGHT",
-      ].filter((e) => typeof e === "string") as Direction[];
-
-      if (directions.length > 0) {
-        entitiesWithDirections.push({
-          entity: e,
-          availableDirections: [...directions],
-        });
-      }
-    });
-
-    return entitiesWithDirections;
-  }
-
   getEntity(x: number, y: number): Entity | undefined {
     return this.entities.find((e) => e.x === x && e.y === y);
-  }
-
-  areThereLetters(): boolean {
-    return this.getTheLetters().length > 0;
-  }
-
-  doWeHaveHarvester(): boolean {
-    return this.entities.some((e) => e.owner === 1 && e.type === "HARVESTER");
   }
 
   getRoot(): Entity {
@@ -432,7 +336,27 @@ class GameState {
   }
 
   can_Spore(): boolean {
-    return gameState.myB > 1 && gameState.myD > 1;
+    const mySpores = gameState.entities.find(
+      (e) => e.owner === 1 && e.type === "SPORER"
+    );
+
+    return (
+      gameState.myB > 1 &&
+      gameState.myD > 1 &&
+      gameState.requiredActionsCount < 2 &&
+      mySpores === undefined
+    );
+  }
+
+  can_SporeFire(): boolean {
+    const mySpores = gameState.entities.find(
+      (e) => e.owner === 1 && e.type === "SPORER"
+    );
+
+    if (mySpores != undefined && gameState.requiredActionsCount < 2) {
+      return true;
+    }
+    return false;
   }
 
   bestInitialDirection(entity: Entity): {
@@ -452,7 +376,14 @@ class GameState {
 
     // check left
     for (let x = entityX - 1; x >= 0; x--) {
-      if (this.entityDictByCoords[`${x}-${entityY}`] === undefined) {
+      const e = this.entityDictByCoords[`${x}-${entityY}`];
+      if (
+        e === undefined ||
+        e.type === "A" ||
+        e.type === "B" ||
+        e.type === "C" ||
+        e.type === "D"
+      ) {
         left++;
       } else {
         break;
@@ -461,7 +392,14 @@ class GameState {
 
     // check right
     for (let x = entityX + 1; x < this.width; x++) {
-      if (this.entityDictByCoords[`${x}-${entityY}`] === undefined) {
+      const e = this.entityDictByCoords[`${x}-${entityY}`];
+      if (
+        e === undefined ||
+        e.type === "A" ||
+        e.type === "B" ||
+        e.type === "C" ||
+        e.type === "D"
+      ) {
         right++;
       } else {
         break;
@@ -470,7 +408,14 @@ class GameState {
 
     // check top
     for (let y = entityY + 1; y < this.height; y++) {
-      if (this.entityDictByCoords[`${entityX}-${y}`] === undefined) {
+      const e = this.entityDictByCoords[`${entityX}-${y}`];
+      if (
+        e === undefined ||
+        e.type === "A" ||
+        e.type === "B" ||
+        e.type === "C" ||
+        e.type === "D"
+      ) {
         top++;
       } else {
         break;
@@ -479,7 +424,15 @@ class GameState {
 
     // check bottom
     for (let y = entityY - 1; y >= 0; y--) {
-      if (this.entityDictByCoords[`${entityX}-${y}`] === undefined) {
+      const e = this.entityDictByCoords[`${entityX}-${y}`];
+
+      if (
+        e === undefined ||
+        e.type === "A" ||
+        e.type === "B" ||
+        e.type === "C" ||
+        e.type === "D"
+      ) {
         bottom++;
       } else {
         break;
@@ -503,6 +456,117 @@ class GameState {
     }
 
     return { coord: { x: entityX, y: entityY }, direction: "E" };
+  }
+
+  getFurthestAvailableSquareInDirection(
+    direction: CardinalDirection,
+    coord: Coord
+  ) {
+    const entityX = coord.x;
+    const entityY = coord.y;
+
+    // i want to find the direction which has the most empty squares in a clear path
+    // i will check the left, right, top and bottom of the entity
+
+    let left = 0;
+    let right = 0;
+    let top = 0;
+    let bottom = 0;
+
+    // check left
+    for (let x = entityX - 1; x >= 0; x--) {
+      const e = this.entityDictByCoords[`${x}-${entityY}`];
+      if (
+        e === undefined ||
+        e.type === "A" ||
+        e.type === "B" ||
+        e.type === "C" ||
+        e.type === "D"
+      ) {
+        left++;
+      } else {
+        break;
+      }
+    }
+
+    // check right
+    for (let x = entityX + 1; x < this.width; x++) {
+      const e = this.entityDictByCoords[`${x}-${entityY}`];
+      if (
+        e === undefined ||
+        e.type === "A" ||
+        e.type === "B" ||
+        e.type === "C" ||
+        e.type === "D"
+      ) {
+        right++;
+      } else {
+        break;
+      }
+    }
+
+    // check top
+    for (let y = entityY + 1; y < this.height; y++) {
+      const e = this.entityDictByCoords[`${entityX}-${y}`];
+      if (
+        e === undefined ||
+        e.type === "A" ||
+        e.type === "B" ||
+        e.type === "C" ||
+        e.type === "D"
+      ) {
+        top++;
+      } else {
+        break;
+      }
+    }
+
+    // check bottom
+    for (let y = entityY - 1; y >= 0; y--) {
+      const e = this.entityDictByCoords[`${entityX}-${y}`];
+
+      if (
+        e === undefined ||
+        e.type === "A" ||
+        e.type === "B" ||
+        e.type === "C" ||
+        e.type === "D"
+      ) {
+        bottom++;
+      } else {
+        break;
+      }
+    }
+
+    if (direction === "W") {
+      return { coord: { x: entityX - left, y: entityY }, direction: "W" };
+    } else if (direction === "E") {
+      return { coord: { x: entityX + right, y: entityY }, direction: "E" };
+    } else if (direction === "N") {
+      return { coord: { x: entityX, y: entityY + top }, direction: "N" };
+    } else if (direction === "S") {
+      return {
+        coord: { x: entityX, y: entityY - bottom },
+        direction: "S",
+      };
+    }
+
+    return { coord: { x: entityX, y: entityY }, direction: "E" };
+  }
+
+  shootSpore() {
+    const spore = this.entities.find(
+      (e) => e.owner === 1 && e.type === "SPORER"
+    )!;
+
+    const direction = spore.organDir;
+
+    var results = this.getFurthestAvailableSquareInDirection(direction, {
+      x: spore.x,
+      y: spore.y,
+    });
+
+    shootSporeCoord(spore, results.coord);
   }
 
   createHarvester(organ: Entity, letter: Entity, coord: Coord) {
@@ -649,11 +713,13 @@ function shootSporeCoord(organ: Entity, coord: Coord) {
   );
 }
 
-function createSpore(entity: Entity, direction: CardinalDirection) {
+function createSpore(
+  entity: Entity,
+  direction: CardinalDirection,
+  coords: Coord
+) {
   console.log(
-    `GROW ${entity.organId} ${entity.x + 1} ${entity.y} SPORER ${direction} ${
-      gameState.turns
-    }`
+    `GROW ${entity.organId} ${coords.x} ${coords.y} SPORER ${direction} ${gameState.turns}`
   );
 }
 
@@ -674,7 +740,23 @@ while (true) {
   const roots = gameState.getRoots();
   for (let i = 0; i < gameState.requiredActionsCount; i++) {
     // HARVEST
-    if (gameState.availableMoves[i]) {
+    if (gameState.can_Spore()) {
+      // get ranedom entity
+      const myents = gameState.availableMoves.filter(
+        (e) => e.action === "GROW"
+      );
+      const randomIndex = Math.floor(Math.random() * myents.length);
+
+      const sporeDirection = gameState.bestInitialDirection(
+        myents[randomIndex].entity
+      );
+      createSpore(
+        myents[randomIndex].entity,
+        sporeDirection.direction,
+        myents[randomIndex].coords
+      );
+    } else if (gameState.can_SporeFire()) {
+    } else if (gameState.availableMoves[i]) {
       const harvestable = gameState.availableMoves.find(
         (e) => e.action === "HARVEST" && e.letter !== undefined
       );
